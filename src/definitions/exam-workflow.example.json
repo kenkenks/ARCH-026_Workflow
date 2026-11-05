@@ -1,0 +1,28 @@
+{
+  "id": "exam-application", "version": "draft-0", "startStepId": "S001",
+  "steps": [
+    {"id":"S001","type":"JOB","jobId":"exam.apply","nextStepId":"S002"},
+    {"id":"S002","type":"CHECK_FINAL","nextStepId":"S003"},
+    {"id":"S003","type":"JOB","jobId":"exam.assess","nextStepId":"S004"},
+    {"id":"S004","type":"CHECK_PROVISIONAL","nextStepId":"S005","retryTargetStepId":"S003"},
+    {"id":"S005","type":"JOB","jobId":"exam.dateRequest","nextStepId":"S006"},
+    {"id":"S006","type":"CHECK_PROVISIONAL","nextStepId":"S007","retryTargetStepId":"S005"},
+    {"id":"S007","type":"JOB","jobId":"exam.date","nextStepId":"S008"},
+    {"id":"S008","type":"CHECK_FINAL","nextStepId":"S009"},
+    {"id":"S009","type":"JOB","jobId":"exam.inProgress","nextStepId":"S010"},
+    {"id":"S010","type":"CHECK_WAIT","nextStepId":"S011","retryTargetStepId":"S009"},
+    {"id":"S011","type":"JOB","jobId":"exam.resultNotice","nextStepId":"S012"},
+    {"id":"S012","type":"JOB","jobId":"exam.certificate","nextStepId":"S013"},
+    {"id":"S013","type":"END"},
+    {"id":"S101","type":"JOB","jobId":"exam.withdrawRequest","nextStepId":"S102"},
+    {"id":"S102","type":"JOB","jobId":"exam.haltNormalProgress","nextStepId":"S103"},
+    {"id":"S103","type":"JOB","jobId":"exam.calculateFullRefund","nextStepId":"S104"},
+    {"id":"S104","type":"JOB","jobId":"exam.issueRefund","nextStepId":"S105"},
+    {"id":"S105","type":"CHECK_WAIT","nextStepId":"S106"},
+    {"id":"S106","type":"END"}
+  ],
+  "eventRoutes": [
+    {"eventId":"E001","eventType":"EXAM_WITHDRAWAL_REQUESTED","targetStepId":"S101","guardId":"exam.withdrawAllowed","mode":"BRANCH"},
+    {"eventId":"E002","eventType":"REFUND_COMPLETED","targetStepId":"S105","guardId":"exam.refundEvidenceMatches","mode":"REEVALUATE"}
+  ]
+}

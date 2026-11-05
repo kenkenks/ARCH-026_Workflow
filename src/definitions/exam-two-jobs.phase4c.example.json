@@ -1,0 +1,11 @@
+{
+  "id":"exam-two-jobs-demo",
+  "version":"draft-1",
+  "startStepId":"S001",
+  "steps":[
+    {"id":"S001","type":"JOB","jobId":"exam.date","nextStepId":"S002"},
+    {"id":"S002","type":"JOB","jobId":"exam.resultRegistration","nextStepId":"S003"},
+    {"id":"S003","type":"END"}
+  ],
+  "eventRoutes":[]
+}

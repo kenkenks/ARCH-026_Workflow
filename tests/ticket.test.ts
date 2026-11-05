@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {CTicketManager,CMemoryTicketRepository} from '../src/prototype/ticket';
+const setup=()=>new CTicketManager(new CMemoryTicketRepository(),()=> '2026-11-04T10:00:00.000Z');
+const input={title:'審査申請',createdBy:'member-a',ownerId:'teacher-b'};
+test('create, edit, submit, attach and complete',()=>{const m=setup();const t=m.create(input);assert.equal(t.status,'DRAFT');m.edit(t.ticketId,{title:'初段審査',dueAt:'2026-12-15T09:00:00Z'});m.submit(t.ticketId);m.attachWorkflow(t.ticketId,'exam','v1','run-1');assert.equal(m.get(t.ticketId)?.status,'IN_PROGRESS');m.complete(t.ticketId);assert.equal(m.get(t.ticketId)?.status,'COMPLETED');});
+test('ticket without workflow and cancellation',()=>{const m=setup();const t=m.create(input);m.submit(t.ticketId);m.cancel(t.ticketId);assert.equal(m.get(t.ticketId)?.workflowId,null);assert.throws(()=>m.edit(t.ticketId,{title:'x'}));});
+test('invalid transition rejected',()=>{const m=setup();const t=m.create(input);assert.throws(()=>m.attachWorkflow(t.ticketId,'x','v1','r'));assert.throws(()=>m.complete(t.ticketId));});
+test('copies prevent external mutation',()=>{const m=setup();const t=m.create(input);t.title='changed';assert.equal(m.get(t.ticketId)?.title,'審査申請');});
+test('required fields and due date validation',()=>{const m=setup();assert.throws(()=>m.create({...input,title:' '}));assert.throws(()=>m.create({...input,dueAt:'bad'}));});
+test('unique execution association',()=>{const m=setup();const a=m.create(input),b=m.create(input);m.submit(a.ticketId);m.submit(b.ticketId);m.attachWorkflow(a.ticketId,'exam','v1','run-1');assert.throws(()=>m.attachWorkflow(b.ticketId,'exam','v1','run-1'));});
+test('parent ticket reference',()=>{const m=setup();const parent=m.create(input);const child=m.create({...input,parentTicketId:parent.ticketId});assert.equal(child.parentTicketId,parent.ticketId);assert.throws(()=>m.create({...input,parentTicketId:'unknown'}));});

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "rootDir": ".",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/prototype/**/*.ts",
+    "tests/prototype.test.ts",
+    "src/prototype/node-shims.d.ts",
+    "tests/ticket.test.ts"
+  ]
+}

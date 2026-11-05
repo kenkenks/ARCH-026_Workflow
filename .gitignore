@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Logs
+*.log
+logs/
+
+# Windows
+desktop.ini
+Thumbs.db
+
+# Editor and temporary files
+.vscode/
+.idea/
+*.tmp
+*.bak
+
+# Local runtime data
+data/local/
+runtime-data/
+
+
+# Separate migration design work
+/docs/architecture/migration-generalization/

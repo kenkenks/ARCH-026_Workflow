@@ -1,0 +1,4 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const os=require('node:os');const path=require('node:path');
+const {JobCatalog,validateJob}=require('../gui/job-catalog.js');
+test('JOB登録・一覧・更新・永続化',()=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'arch-jobs-'));try{const file=path.join(dir,'jobs.json'),store=new JobCatalog(file);store.save({keyword:'exam.apply',displayName:'審査申請',jobClass:'CJob'});assert.equal(new JobCatalog(file).list()[0].displayName,'審査申請');store.save({keyword:'exam.apply',displayName:'申請受付',jobClass:'CCheckJob',enabled:false});assert.equal(store.list().length,1);assert.equal(store.list()[0].enabled,false);}finally{fs.rmSync(dir,{recursive:true,force:true});}});
+test('不正なJOBクラス・識別子を拒否',()=>{assert.ok(validateJob({keyword:'bad key',displayName:'x',jobClass:'CJob'}).length);assert.ok(validateJob({keyword:'valid',displayName:'x',jobClass:'ArbitraryCode'}).length);});
