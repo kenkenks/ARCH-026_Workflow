@@ -9,6 +9,7 @@
     "skipLibCheck": true
   },
   "include": [
+    "src/migration/**/*.ts",
     "src/hello-host/**/*.ts",
     "src/hello-client/**/*.ts",
     "src/adapters/hello-http/**/*.ts",
