@@ -10,8 +10,9 @@ const {prepare} = require('./template-runner.js');
 const {WorkflowRuntime} = require('./workflow-runtime.js');
 const {ExamJobs} = require('./exam-jobs.js');
 const examJobs=new ExamJobs();
-const jobs = new JobCatalog(path.join(__dirname,'data','job-catalog.json'));
-const definitions = new DefinitionStore(path.join(__dirname,'data','definitions'));
+const dataDirectory=process.env.ARCH026_GUI_DATA_DIR||path.join(__dirname,'data');
+const jobs = new JobCatalog(path.join(dataDirectory,'job-catalog.json'));
+const definitions = new DefinitionStore(path.join(dataDirectory,'definitions'));
 const tickets = new CTicketManager(new CMemoryTicketRepository());
 let activeTicketId = null;
 const port = Number(process.env.PORT || 3000);
@@ -20,7 +21,11 @@ let state;
 let runtime = null;
 function init(template=null) {
   runtime = null;
+  activeTicketId = null;
   const store = new CMemoryHistoryStore();
+  // Fixed/template previews are exclusively simulated; annotate the stored history.
+  const save=store.save.bind(store);
+  store.save=s=>save({...s,executionMode:'DEMO',simulatedJobUsed:s.history.length>0,resultKind:s.status==='COMPLETED'?'DEMO_COMPLETED':s.status,history:s.history.map(h=>({...h,executionMode:'DEMO',simulated:true}))});
   const steps = [
     {no:10, job:new CDummyJob('仮ジョブA'), nextStepNo:20},
     {no:20, job:new CCheckJob('Bool判定',new CSequenceBool([false,false,true]),10,30)},
@@ -39,7 +44,7 @@ function step() {
   if(s.done) return;
   if(!s.running){
     s.running=true;
-    s.workflow.run(s.runId,s.startStepNo,100,()=>gate(s)).then(async result=>{s.done=true;if(activeTicketId && result.status==='COMPLETED' && tickets.get(activeTicketId)?.status==='IN_PROGRESS')tickets.complete(activeTicketId);}).catch(e=>{s.error=String(e);s.done=true;});
+    s.workflow.run(s.runId,s.startStepNo,100,()=>gate(s)).then(()=>{s.done=true;}).catch(e=>{s.error=String(e);s.done=true;});
   }
   const next=s.waiting.shift(); if(next) next(); else s.permits.push(true);
 }
@@ -49,12 +54,12 @@ async function snapshot() {
     const counts=new Map();
     const steps=runtime.definition.steps.map((x,i)=>({id:x.id,no:(i+1)*10,name:x.type==='JOB'?(jobs.list().find(j=>j.keyword===x.jobId)?.displayName||x.jobId):x.type,type:x.type,jobId:x.jobId}));
     const history=r.history.map(h=>{const step=steps.find(x=>x.id===h.stepId);const c=counts.get(h.stepId)||{stepNo:step?.no,executions:0,lastResult:''};c.executions++;c.lastResult=h.result;counts.set(h.stepId,c);return {...h,stepNo:step?.no,job:step?.name,nextStepNo:steps.find(x=>x.id===h.nextStepId)?.no??null};});
-    const current=runtime.steps.get(r.currentStepId);const jobForm=current?.type==='JOB'?examJobs.describe(current.jobId,state.runId,current.id,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass):null;
-    return {jobForm,activeTicketId,runId:state.runId,status:r.status,currentStepNo:steps.find(x=>x.id===r.currentStepId)?.no??null,history,summary:[...counts.values()],error:state.error,done:['COMPLETED','FAILED'].includes(r.status),pending:r.pending,template:{id:r.definitionId,version:r.definitionVersion,steps},runtime:true};
+    const current=runtime.steps.get(r.currentStepId);const jobForm=r.executionMode==='NORMAL'&&current?.type==='JOB'?examJobs.describe(current.jobId,state.runId,current.id,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass):null;
+    return {executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed,jobForm,activeTicketId,runId:state.runId,status:r.status,currentStepNo:steps.find(x=>x.id===r.currentStepId)?.no??null,history,summary:[...counts.values()],error:state.error,done:['COMPLETED','FAILED'].includes(r.status),pending:r.pending,template:{id:r.definitionId,version:r.definitionVersion,steps},runtime:true};
   }
   const s=state;
   const data=await s.monitor.get(s.runId);
-  return {activeTicketId,runId:s.runId, status:data?.status || 'READY', currentStepNo:data?.currentStepNo ?? (data?'END':s.startStepNo), history:data?.history || [], summary:await s.monitor.summary(s.runId), error:s.error, done:s.done,template:s.template};
+  return {executionMode:'DEMO',resultKind:data?.resultKind||'READY',simulatedJobUsed:data?.simulatedJobUsed||false,activeTicketId,runId:s.runId, status:data?.status || 'READY', currentStepNo:data?.currentStepNo ?? (data?'END':s.startStepNo), history:data?.history || [], summary:await s.monitor.summary(s.runId), error:s.error, done:s.done,template:s.template};
 }
 function send(res,code,body,type='application/json; charset=utf-8') {res.writeHead(code,{'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(type.startsWith('application/json')?JSON.stringify(body):body);}
 async function readBody(req){let body='';for await(const chunk of req){body+=chunk;if(body.length>65536)throw Error('Request too large');}return JSON.parse(body||'{}');}
@@ -78,11 +83,13 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='POST' && url.pathname==='/api/tickets') {const input=await readBody(req);const t=tickets.create(input);return send(res,201,t);}
     if(req.method==='GET' && url.pathname.startsWith('/api/tickets/')) {const id=decodeURIComponent(url.pathname.slice(13));const t=tickets.get(id);return send(res,t?200:404,t||{error:'Not found'});}
     if(req.method==='POST' && url.pathname==='/api/ticket-action') {
-      const {ticketId,action,patch,definitionId,definitionVersion}=await readBody(req);let t;
+      const {ticketId,action,patch,definitionId,definitionVersion,executionMode='NORMAL'}=await readBody(req);let t;
       if(action==='edit')t=tickets.edit(ticketId,patch||{});
       else if(action==='submit')t=tickets.submit(ticketId);
       else if(action==='cancel')t=tickets.cancel(ticketId);
       else if(action==='start'){
+        if(!['NORMAL','DEMO'].includes(executionMode))return send(res,400,{error:'実行モードが不正です'});
+        if(runtime&&!['COMPLETED','FAILED'].includes(runtime.status))return send(res,409,{error:'Workflow is running'});
         if(state.running&&!state.done)return send(res,409,{error:'Workflow is running'});
         if(activeTicketId&&tickets.get(activeTicketId)?.status==='IN_PROGRESS')return send(res,409,{error:'Another ticket is active'});
         const ticket=tickets.get(ticketId);if(!ticket||ticket.status!=='OPEN')return send(res,409,{error:'提出済みチケットが必要です'});
@@ -94,12 +101,22 @@ const server=http.createServer(async(req,res)=>{
         const lookup=new Map(catalog.map(j=>[j.keyword,j]));
         for(const s of def.steps){if(s.type==='JOB'){const j=lookup.get(s.jobId);if(!j||!j.enabled)errors.push(`${s.id}: JOB未登録または無効: ${s.jobId}`);else if(j.jobClass==='CCheckJob')errors.push(`${s.id}: JOB工程にはCHECKクラスを指定できません: ${s.jobId}`);}}
         if(errors.length)return send(res,400,{error:errors.join(' / '),details:errors});
-        init();
-        // Explicit simulation adapters: no business processing is performed.
-        state.runId=`runtime-${++runCounter}`;
-        const handlers=Object.fromEntries(def.steps.filter(s=>s.type==='JOB').map(s=>[s.jobId,examJobs.handler(s.jobId,state.runId,lookup.get(s.jobId)?.jobClass)|| (async()=>({status:'COMPLETED'}))]));
-        runtime=new WorkflowRuntime(def,handlers);
-        t=tickets.attachWorkflow(ticketId,def.id,def.version,state.runId);activeTicketId=ticketId;
+        const runId=`runtime-${++runCounter}`;
+        const handlers={};const simulatedJobIds=[];
+        for(const s of def.steps.filter(s=>s.type==='JOB')){
+          if(executionMode==='DEMO'){
+            handlers[s.jobId]=async()=>({status:'COMPLETED'});simulatedJobIds.push(s.jobId);
+          }else{
+            const handler=examJobs.handler(s.jobId,runId,lookup.get(s.jobId)?.jobClass);
+            if(!handler)return send(res,400,{error:`実装未登録のJOB: ${s.jobId}`});
+            handlers[s.jobId]=handler;
+          }
+        }
+        const nextRuntime=new WorkflowRuntime(def,handlers,{executionMode,simulatedJobIds});
+        init();state.runId=runId;runtime=nextRuntime;
+        // A demo preview never attaches or completes a business Ticket.
+        if(executionMode==='NORMAL'){t=tickets.attachWorkflow(ticketId,def.id,def.version,runId);activeTicketId=ticketId;}
+        else {activeTicketId=null;t={...ticket,executionMode};}
       } else return send(res,400,{error:'Unknown action'});
       return send(res,200,t);
     }
@@ -116,8 +133,8 @@ const server=http.createServer(async(req,res)=>{
       if(runtime){
         const body=await readBody(req);
         const r=await runtime.advance({checkResult:body.checkResult});
-        if(r.status==='COMPLETED'&&activeTicketId&&tickets.get(activeTicketId)?.status==='IN_PROGRESS')tickets.complete(activeTicketId);
-        return send(res,200,{ok:true,status:r.status});
+        if(r.executionMode==='NORMAL'&&!r.simulatedJobUsed&&r.status==='COMPLETED'&&activeTicketId&&tickets.get(activeTicketId)?.status==='IN_PROGRESS')tickets.complete(activeTicketId);
+        return send(res,200,{ok:true,status:r.status,executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed});
       }
       step();return send(res,200,{ok:true});
     }
@@ -125,4 +142,5 @@ const server=http.createServer(async(req,res)=>{
     send(res,404,{error:'Not found'});
   } catch(e){send(res,e.status||500,{error:e.message||String(e),details:e.details});}
 });
-server.listen(port,'127.0.0.1',()=>console.log(`ARCH-026 GUI: http://localhost:${port}`));
+if(require.main===module)server.listen(port,'127.0.0.1',()=>console.log(`ARCH-026 GUI: http://127.0.0.1:${server.address().port}`));
+module.exports={server};
