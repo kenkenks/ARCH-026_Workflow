@@ -43,9 +43,12 @@ class SimpleDB {
       if (!Number.isInteger(timeout) || timeout < 0) throw new SimpleDBError('UNAVAILABLE');
       fs.accessSync(file, fs.constants.R_OK | fs.constants.W_OK);
       db = new SimpleDB(new DatabaseSync(file, { timeout }));
-      if (db.get('PRAGMA application_id').application_id !== schema.applicationId ||
-          db.get('PRAGMA user_version').user_version !== schema.version)
+      const applicationId = db.get('PRAGMA application_id').application_id;
+      const version = db.get('PRAGMA user_version').user_version;
+      if (applicationId !== schema.applicationId)
         throw new SimpleDBError('STORAGE_SCHEMA_MISMATCH');
+      if (version !== schema.version)
+        throw new SimpleDBError(schema.migrationFromVersions?.includes(version) ? 'MIGRATION_REQUIRED' : 'STORAGE_SCHEMA_MISMATCH');
       db.connection.exec('PRAGMA synchronous=FULL;');
       return db;
     } catch (error) {

@@ -3,12 +3,15 @@ const {randomUUID}=require('node:crypto');
 const {SimpleDB,SimpleDBError}=require('../simpledb/database.cjs');
 const {DataError,validateDataId,validateDataRevision,validateDemoItem}=require('../../../dist/src/data/demo-item');
 // A separate database family, NOT an upgrade of the Workflow Definition database.
-const DATA_STORAGE_SCHEMA=Object.freeze({applicationId:0x41524441,version:1,sql:`
+const DATA_STORAGE_SCHEMA_V1=Object.freeze({applicationId:0x41524441,version:1,sql:`
 CREATE TABLE data_records (
   collection BLOB NOT NULL, record_id BLOB NOT NULL,
   record_json TEXT NOT NULL, revision TEXT NOT NULL CHECK(length(revision)>0),
   PRIMARY KEY(collection,record_id)
 ) STRICT;`});
+const DATA_REVISION_INDEX_SQL='CREATE INDEX data_records_collection_revision ON data_records(collection,revision);';
+const DATA_STORAGE_SCHEMA=Object.freeze({applicationId:DATA_STORAGE_SCHEMA_V1.applicationId,version:2,
+  migrationFromVersions:Object.freeze([1]),sql:DATA_STORAGE_SCHEMA_V1.sql+'\n'+DATA_REVISION_INDEX_SQL});
 const codes=new Set(['ALREADY_EXISTS','NOT_FOUND','CONFLICT','DATA_CORRUPT','SCHEMA_MISMATCH','VALIDATION_FAILED','INVALID_ARGUMENT','OUTCOME_UNKNOWN','STORAGE_SCHEMA_MISMATCH']);
 function normalize(error){
   const e=new DataError(codes.has(error?.code)?error.code:'UNAVAILABLE');
@@ -56,4 +59,4 @@ class SimpleDBDataRepository {
     });}catch(error){throw normalize(error);}
   }
 }
-module.exports={SimpleDBDataRepository,DATA_STORAGE_SCHEMA,SimpleDB};
+module.exports={SimpleDBDataRepository,DATA_STORAGE_SCHEMA,DATA_STORAGE_SCHEMA_V1,DATA_REVISION_INDEX_SQL,SimpleDB};

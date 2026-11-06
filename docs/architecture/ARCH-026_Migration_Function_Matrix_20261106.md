@@ -37,7 +37,7 @@
 | F13 | 途中失敗後の安全な再実行 | ✅ 完了 | ✅ 完了 | 🟡 一部 | 🟡 一部 | 🟡 一部 | ローカルで新計画から再照合・再実行、結果不明の自動再送なし。全件原子性なし |
 | F14 | 一般データのコピー・変換 | ❌ 未完 | ✅ DemoItem完了 | 🟡 一部 | 🟡 一部 | 🟡 一部 | SimpleDB専用Data DB間でDemoItem v1→v2を検証。任意業務モデル・JSON一般データ・Firestore接続は未対応 |
 | F15 | Ticket／Instance／履歴の永続化・移行 | ❌ 未完 | ❌ 未完 | ❔ 要確認 | ❔ 要確認 | ❌ 未完 | ARCHに型・メモリ実装あり。永続化契約・移行手順は未整備。道場側の該当実装は未確認 |
-| F16 | 物理DB／表構造のSchema Migration | — 対象外 | 🟡 一部 | 🟡 一部 | ❔ 要確認 | ❌ 未完 | SQLiteは物理版識別のみ、変更実行なし。GAS Memberヘッダー変更は実装済み |
+| F16 | 物理DB／表構造のSchema Migration | — 対象外 | ✅ Data 1→2完了 | 🟡 一部 | ❔ 要確認 | 🟡 一部 | Dataの非一意index追加・データ保全・障害/再実行を検証。Definitionはv1識別/NO_OPのみで変更経路未実装。GASはMember用途限定 |
 | F17 | Workflow論理Schemaのバージョン変換 | ❌ 未完 | ❌ 未完 | ❌ 未完 | ❌ 未完 | 🟠 設計 | 既存Versionを上書きせず新Version登録する方針 |
 | F18 | PDD／物理Schema投影 | — 対象外 | — 対象外 | 🟡 一部 | 🟡 一部 | 🟡 一部 | Member用途のPDD・Firestore投影は存在。Workflowトポロジー検証とは別 |
 | F19 | Job／Checkのコード・依存モジュール配布 | ❌ 未完 | ❌ 未完 | 🟡 一部 | 🟡 一部 | ❌ 未完 | 道場側に環境別成果物生成あり。ただしWorkflow実装の移植・依存解決は未実装 |
@@ -53,9 +53,9 @@
 ### セル評価の注意
 
 - F06〜F13の「GAS／Firestore 一部」は**道場システムの既存Member移行・コピー処理**に対する評価であり、Workflow Definition Migrationが実装済みという意味ではない。
-- F16のGAS「一部」は**Memberヘッダー変更**に限定する。SQLiteの`user_version`確認は物理Schema移行の実行機能ではない。
+- F16のGAS「一部」は**Memberヘッダー変更**に限定する。SQLiteはData 1→2の実DDLのみ完了。DefinitionのVersion確認/NO_OPを物理変更の完了とは扱わない。
 - F20のARCH側「完了」は**ローカルRegistryの検証**に限定し、実装コードの配布を意味しない。
-- F14/F24〜F27の「完了」は**新規専用DBのDemoItem用途**に限定する。既存Definition DBへの自動upgrade、任意データ・参照関係、SQLite物理Migrationを実装した意味ではない。
+- F14/F24〜F27の「完了」は**専用DBのDemoItem用途**に限定する。既存Definition DBへの自動upgrade、任意データ・参照関係の実装を意味しない。物理Migrationは別責務のF16に記録する。
 
 ## 2. 移行元 → 移行先 対応マトリックス
 
@@ -79,7 +79,7 @@
 | 保存Adapter | JSON・SimpleDB完了、Firestore・GASのDefinition Adapter未完 | Firestoreは後工程で追加 |
 | Workflow定義移行 | ✅ ローカル双方向完了／他環境未完 | Firestore Adapter・道場側の受入境界 |
 | 一般データ移行 | ✅ SimpleDB DemoItem／🟡 他用途 | 他モデル・保存先への適用範囲と参照整合性を別途設計 |
-| Schema移行 | 🟡 GAS Member用途のみ一部対応 | SQLite物理Schema変更、Workflow論理Schema変換 |
+| Schema移行 | ✅ SQLite Data 1→2／🟡 その他 | Definitionの変更経路（必要時）、他DDL、Workflow論理Schema変換は未対応 |
 | モジュール移行 | ❌ 未完 | Job／Checkの配布単位・依存・Registry・実装版整合 |
 | 実行状態・履歴移行 | ❌ 未完 | Ticket／Instance／履歴の永続化から設計 |
 | 復旧・再実行 | ✅ ローカル定義の再照合・再実行／他用途は一部 | 永続台帳・他環境の障害検証 |
@@ -117,3 +117,13 @@
 - 基準HEAD：`b9634dd`。フェーズ2は未コミット・レビュー待ち。
 - 物理判断：Data専用application_id `0x41524441` / user_version `1`の新規DB。既存Definition DBは移行不要・無変更。相互誤接続拒否と既存ファイル不変を試験。
 - 全件原子性、DB＋Journalの原子性、確定後自動Rollback、Firestore/GAS、Ticket/Instance、物理Schema Migrationは対象外。
+
+### Schema Migration 最終フェーズ 検証記録（2026-11-06）
+
+- 基準HEAD：`a448cfc523e7b3adefa95ab4f3e72d63c8c1ffe9`。本工程は未コミット・レビュー待ち。
+- `src/adapters/simpledb/schema-migration.cjs`にRegistry/Planner/Executorを実装。操作入口は`tools/schema-migration.cjs`、仕様は`docs/SCHEMA_MIGRATION.md`。
+- Definition: application_id `0x41524348` / user_version `1`を維持。Version識別・NO_OP・既存保存は検証したが、物理変更経路は実装・検証していない。
+- Data: application_id `0x41524441`を維持しv1→v2。`data_records_collection_revision`非一意indexを追加。列/主キー/JSON/Revisionは不変。新規DBはv2で初期化、既存v1は通常OpenでMIGRATION_REQUIRED。
+- `npm run test:schema-migration`：20 PASS / 0 FAIL。Dry Run対象ファイル不変、実DDL、保全/CAS/Data Migration/別プロセス、種類/Version/Schema/経路拒否、DDL/Version/commit/cleanup障害・再照合・再実行、順序、非同期拒否、CLIを検証。
+- `npm test`：193 PASS / 0 FAIL（既存HTTP試験のloopback listen権限を許可）。Definition Migration20件・Data Migration23件を含む。Ticket/Runtime追加回帰：11 PASS / 0 FAIL。
+- 新規一時directory内のテストDBのみを作成・変更。実運用DBの移行、通常Openでの自動移行、破壊的Rollback、downgrade、Firebase/GAS、Ticket/Instanceの変更は実施しない。

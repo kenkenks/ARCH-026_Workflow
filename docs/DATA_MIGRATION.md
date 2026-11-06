@@ -4,9 +4,10 @@ DemoItemに限定した更新可能なData RepositoryとMigration。Definition M
 
 ## 保存領域と物理版の判断
 
-**新規の専用DBだけを使用する。既存Definition DBのupgradeは不要であり、実行しない。**
+**Definition DBと独立したData専用DBを使用する。既存Definition DBのupgradeは不要であり、実行しない。** フェーズ2では新規DBのみを検証し、Schema Migration最終フェーズで既存Data v1の明示的な1→2手順を追加した。
 
-- `DATA_STORAGE_SCHEMA`: application_id `0x41524441`、user_version `1`。
+- フェーズ2時点はapplication_id `0x41524441` / user_version `1`。Schema Migration最終フェーズ以降の`DATA_STORAGE_SCHEMA`は同じapplication_idのv2。既存v1は通常OpenでMIGRATION_REQUIREDとなる。
+- 明示的なv1→v2手順は`docs/SCHEMA_MIGRATION.md`を参照。論理Data Migrationの契約・動作は維持する。`DATA_STORAGE_SCHEMA_V1`は旧版の明示参照用。
 - Definition DB（application_id `0x41524348`）とは異なるDB系列。両者を同じファイルとしてopenするとSTORAGE_SCHEMA_MISMATCH。
 - data_records: collection BLOB、record_id BLOB、record_json TEXT、revision TEXT。collection＋record_idが複合主キー。
 - initializeは新規ファイルだけに明示実行。通常openでテーブルを作成しない。既存ファイルへinitializeしない。
