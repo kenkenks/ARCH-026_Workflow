@@ -7,7 +7,7 @@
     {"id":"S004","type":"CHECK_PROVISIONAL","nextStepId":"S005","retryTargetStepId":"S003"},
     {"id":"S005","type":"JOB","jobId":"exam.dateRequest","nextStepId":"S006"},
     {"id":"S006","type":"CHECK_PROVISIONAL","nextStepId":"S007","retryTargetStepId":"S005"},
-    {"id":"S007","type":"JOB","jobId":"exam.date","nextStepId":"S008"},
+    {"id":"S007","type":"JOB","jobId":"exam.dateAgreement","nextStepId":"S008"},
     {"id":"S008","type":"CHECK_FINAL","nextStepId":"S009"},
     {"id":"S009","type":"JOB","jobId":"exam.inProgress","nextStepId":"S010"},
     {"id":"S010","type":"CHECK_WAIT","nextStepId":"S011","retryTargetStepId":"S009"},
