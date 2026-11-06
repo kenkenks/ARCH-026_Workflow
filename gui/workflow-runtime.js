@@ -11,10 +11,14 @@ class WorkflowRuntime {
   this.handlers=handlers;
   this.currentStepId=def.startStepId;this.status='READY';this.history=[];
   this.pending=null;this.maxSteps=1000;
+  this.advancing=false;
  }
  snapshot(){return {executionMode:this.executionMode,simulatedJobUsed:this.simulatedJobUsed,resultKind:this.status==='COMPLETED'?(this.executionMode==='DEMO'?'DEMO_COMPLETED':'CONTROL_FLOW_COMPLETED'):this.status,definitionId:this.definition.id,definitionVersion:this.definition.version,currentStepId:this.currentStepId,status:this.status,pending:this.pending?{...this.pending}:null,history:this.history.map(h=>({...h}))};}
  record(step,result,next){this.history.push({executionMode:this.executionMode,simulated:step.type==='JOB'&&this.simulatedJobIds.has(step.jobId),order:this.history.length+1,stepId:step.id,type:step.type,result,nextStepId:next,at:new Date().toISOString()});}
  async advance({checkResult}={}){
+  if(this.advancing)throw Object.assign(Error('同一Runtimeの工程を実行中です'),{code:'RUNTIME_BUSY',status:409});
+  this.advancing=true;
+  try {
   if(['COMPLETED','FAILED'].includes(this.status))throw Error('実行は終了しています');
   if(this.history.length>=this.maxSteps){this.status='FAILED';throw Error('実行上限に達しました');}
   const s=this.steps.get(this.currentStepId);
@@ -40,6 +44,7 @@ class WorkflowRuntime {
   if(checkResult==='REJECT'&&!s.retryTargetStepId){this.record(s,'REJECT',null);this.status='FAILED';this.pending=null;return this.snapshot();}
   const next=checkResult==='PASS'?s.nextStepId:s.retryTargetStepId;
   this.record(s,checkResult,next);this.currentStepId=next;this.status='ACTIVE';this.pending=null;return this.snapshot();
+  }finally{this.advancing=false;}
  }
 }
 module.exports={WorkflowRuntime};

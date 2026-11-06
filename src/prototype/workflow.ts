@@ -44,8 +44,11 @@ export class CMemoryHistoryStore implements IWorkflowHistoryStore {
   }
   load(runId: string): RunSnapshot | undefined { return this.snapshots.get(runId); }
 }
+// Process-local reservations; the public history Store contract remains unchanged.
+const activeRuns = new WeakMap<IWorkflowHistoryStore, Set<string>>();
 export class CWorkflow {
   private readonly steps = new Map<StepNo, Step>();
+  private running = false;
   constructor(steps: readonly Step[], private readonly store: IWorkflowHistoryStore) {
     for (const step of steps) {
       if (!Number.isSafeInteger(step.no) || this.steps.has(step.no)) throw new Error(`Invalid or duplicate step: ${step.no}`);
@@ -61,9 +64,18 @@ export class CWorkflow {
       }
     }
   }
+  /** One active run per object. Independent runs need fresh Job/Check instances;
+   * sequential reuse does not reset their internal state. Not a resume API. */
   async run(runId: string, startStepNo: StepNo, maxExecutions = 100, beforeStep?: () => Promise<void>): Promise<RunSnapshot> {
     if (!this.steps.has(startStepNo)) throw new Error(`Unknown start step: ${startStepNo}`);
     if (!Number.isSafeInteger(maxExecutions) || maxExecutions < 1) throw new Error('Invalid execution limit');
+    let reserved = activeRuns.get(this.store);
+    if (reserved?.has(runId)) throw Object.assign(new Error(`Run ID is executing: ${runId}`), {code:'RUN_BUSY'});
+    // Registered Jobs/Checks may be stateful. Use a fresh graph for each independent run.
+    if (this.running) throw Object.assign(new Error('CWorkflow object is executing'), {code:'WORKFLOW_BUSY'});
+    if (!reserved) { reserved = new Set<string>(); activeRuns.set(this.store, reserved); }
+    reserved.add(runId); this.running = true;
+    try {
     if (await this.store.load(runId)) throw new Error(`Run ID already exists: ${runId}`);
     let current: StepNo | null = startStepNo;
     const history: TraceEntry[] = [];
@@ -91,6 +103,10 @@ export class CWorkflow {
     }
     const final = snapshot(current === null ? 'COMPLETED' : 'LIMIT_REACHED');
     await this.store.save(final); return final;
+    } finally {
+      reserved.delete(runId); this.running = false;
+      if (!reserved.size) activeRuns.delete(this.store);
+    }
   }
 }
 /** Read-only operational projection. Never modifies workflow state. */

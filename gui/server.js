@@ -64,6 +64,14 @@ async function snapshot() {
 function send(res,code,body,type='application/json; charset=utf-8') {res.writeHead(code,{'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(type.startsWith('application/json')?JSON.stringify(body):body);}
 async function readBody(req){let body='';for await(const chunk of req){body+=chunk;if(body.length>65536)throw Error('Request too large');}return JSON.parse(body||'{}');}
 const server=http.createServer(async(req,res)=>{
+  // Capture before reading an asynchronous request body. A delayed request must not
+  // silently switch to whichever execution happens to be global later.
+  const targetRuntime=runtime,targetState=state,targetRunId=state.runId,targetTicketId=activeTicketId;
+  const targetStepId=targetRuntime?.currentStepId;
+  const requireTarget=()=>{
+    if(runtime!==targetRuntime||state!==targetState||state.runId!==targetRunId||activeTicketId!==targetTicketId)
+      throw Object.assign(Error('実行対象が変更されました'),{code:'EXECUTION_CHANGED',status:409});
+  };
   try {
     const url=new URL(req.url,`http://localhost:${port}`);
     if(req.method==='GET' && url.pathname==='/') return send(res,200,fs.readFileSync(path.join(__dirname,'index.html'),'utf8'),'text/html; charset=utf-8');
@@ -88,6 +96,7 @@ const server=http.createServer(async(req,res)=>{
       else if(action==='submit')t=tickets.submit(ticketId);
       else if(action==='cancel')t=tickets.cancel(ticketId);
       else if(action==='start'){
+        requireTarget();
         if(!['NORMAL','DEMO'].includes(executionMode))return send(res,400,{error:'実行モードが不正です'});
         if(runtime&&!['COMPLETED','FAILED'].includes(runtime.status))return send(res,409,{error:'Workflow is running'});
         if(state.running&&!state.done)return send(res,409,{error:'Workflow is running'});
@@ -121,26 +130,31 @@ const server=http.createServer(async(req,res)=>{
       return send(res,200,t);
     }
     if(req.method==='POST' && url.pathname==='/api/job-submit') {
-      if(!runtime||!activeTicketId)return send(res,409,{error:'実行中のJOBがありません'});
-      const current=runtime.steps.get(runtime.currentStepId);
+      if(!targetRuntime||!targetTicketId)return send(res,409,{error:'実行中のJOBがありません'});
+      const current=targetRuntime.steps.get(targetStepId);
       if(!current||current.type!=='JOB'||!examJobs.resolve(current.jobId,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass))return send(res,409,{error:'業務入力を受け付ける工程ではありません'});
       const body=await readBody(req);
-      const record=examJobs.submit(current.jobId,state.runId,current.id,body.values,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass);
+      requireTarget();
+      if(targetRuntime.currentStepId!==targetStepId||targetRuntime.advancing||['COMPLETED','FAILED'].includes(targetRuntime.status))return send(res,409,{error:'実行工程が変更されたか処理中です'});
+      const record=examJobs.submit(current.jobId,targetRunId,current.id,body.values,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass);
       return send(res,200,{ok:true,completedAt:record.completedAt});
     }
     if(req.method==='GET' && url.pathname==='/api/state') return send(res,200,await snapshot());
     if(req.method==='POST' && url.pathname==='/api/step') {
-      if(runtime){
+      if(targetRuntime){
         const body=await readBody(req);
-        const r=await runtime.advance({checkResult:body.checkResult});
-        if(r.executionMode==='NORMAL'&&!r.simulatedJobUsed&&r.status==='COMPLETED'&&activeTicketId&&tickets.get(activeTicketId)?.status==='IN_PROGRESS')tickets.complete(activeTicketId);
+        requireTarget();
+        if(targetRuntime.currentStepId!==targetStepId)throw Object.assign(Error('実行工程が変更されました'),{code:'EXECUTION_CHANGED',status:409});
+        const r=await targetRuntime.advance({checkResult:body.checkResult});
+        requireTarget();
+        if(r.executionMode==='NORMAL'&&!r.simulatedJobUsed&&r.status==='COMPLETED'&&targetTicketId&&tickets.get(targetTicketId)?.status==='IN_PROGRESS')tickets.complete(targetTicketId);
         return send(res,200,{ok:true,status:r.status,executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed});
       }
       step();return send(res,200,{ok:true});
     }
     if(req.method==='POST' && url.pathname==='/api/reset') {if(runtime && !['COMPLETED','FAILED'].includes(runtime.status))return send(res,409,{error:'実行中のひな型はリセットできません'});if(activeTicketId && tickets.get(activeTicketId)?.status==='IN_PROGRESS') return send(res,409,{error:'チケット実行中はリセットできません。'});if(state.running && !state.done) return send(res,409,{error:'実行中はリセットできません。完了後にリセットしてください。'});init();return send(res,200,{ok:true});}
     send(res,404,{error:'Not found'});
-  } catch(e){send(res,e.status||500,{error:e.message||String(e),details:e.details});}
+  } catch(e){send(res,e.status||500,{error:e.message||String(e),code:e.code,details:e.details});}
 });
 if(require.main===module)server.listen(port,'127.0.0.1',()=>console.log(`ARCH-026 GUI: http://127.0.0.1:${server.address().port}`));
 module.exports={server};

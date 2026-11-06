@@ -37,3 +37,17 @@
 - Runtime自体に未解決Handlerが渡された場合は `FAILED` とし、架空のJob完了履歴を作らない。Handler例外・不正戻り値は実行したJobの `ERROR` を記録し、失敗後は進行できない。
 - GUIはモードと「デモ（業務完了ではありません）」を表示し、履歴にもモード・模擬処理を表示する。CLIの `npm run demo` も同じ注意を表示する。
 - PrototypeのCWorkflow実行処理やTicket状態遷移は変更していない。固定GUI/CLIデモはComposition側で保存履歴にDEMO属性を付ける。履歴は従来どおりメモリ保持のみ。
+
+## P2-1：プロセス内の並行実行契約
+
+- `WorkflowRuntime.advance()` は最初の非同期処理前に実行中ガードを取得する。同じRuntimeの重複要求は `RUNTIME_BUSY` / HTTP 409で拒否し、Handler・状態・履歴・Ticketを変更しない。キューには積まない。
+- 正常終了・WAITING・FAILED・例外でガードを解放する。WAITINGを返した後の正規の再評価は許可する。Handlerがまだ処理中の状態とは区別する。
+- GUI Serverは要求受付時のRuntime・状態オブジェクト・runId・Ticketを固定し、本文受信後に照合する。別実行に変わった要求は `EXECUTION_CHANGED` / HTTP 409。step/業務入力では工程変更も拒否する。Ticket完了は固定した実行の結果にのみ適用する。
+- 開始ボタンの送信中ガードは補助対策。別タブや直接HTTP要求に対してはServer/Runtime側で保護する。GUIの同時実行枠は引き続き1件。
+- Prototypeの `CWorkflow.run()` はStoreオブジェクト＋runIdを最初のawait前に予約する。同じ組合せの実行中要求は `RUN_BUSY`。別CWorkflowオブジェクトからも拒否する。Storeの公開契約は変更しない。
+- 同じCWorkflowオブジェクトを別runIdで並行利用すると `WORKFLOW_BUSY`。異なるCWorkflowオブジェクト・異なるrunIdは同じStoreでも並行実行できる。予約とオブジェクトのガードはfinallyで解放する。保存済みrunIdの再実行拒否は維持する。
+- **独立実行はJob/Checkを実行ごとに生成する。** `reconstructWorkflow()` は呼出しごとにRegistry factoryで生成する既存境界を利用する。factoryは状態を持つ同一実体を使い回さないこと。固定GUIデモもinit時に新しいCSequenceBoolとJobを作成する。業務Handlerの入力は既存どおりrunId＋stepIdで区別する。
+- 同じCWorkflowを順次利用することは可能だが、Job/Checkの内部状態を自動リセットしない。新しいrunIdだけでは状態分離にならない。保存履歴からの再開・取消し機構は追加しない。
+- 保証は同じプロセス・同じRuntime/Storeオブジェクトの範囲。別Storeオブジェクトが同じ物理保存先を指す場合や別プロセス間の排他は保証しない。永続化/CAS・分散ロック・外部業務のexactly-onceは対象外。
+
+並行試験は `tests/workflow-concurrency.test.cjs`、実HTTPとGUI開始ガードは `tests/gui-runtime-concurrency.test.cjs`。PromiseとHTTP受信イベントで順序を制御し、既存DBを使わず一時領域で実行する。ブラウザ操作の試験はDOMスタブでの送信ガード検証であり、実ブラウザE2Eではない。
