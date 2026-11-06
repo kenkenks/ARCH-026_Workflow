@@ -1,6 +1,8 @@
 import type { CheckResult, StepDefinition, WorkflowDefinition, WorkflowEvent, WorkflowInstance } from '../core/types.js';
-export interface DefinitionRepository {
-  get(id: string, version: string): Promise<WorkflowDefinition | null>;
+export interface DefinitionRepository<TDefinition = WorkflowDefinition> {
+  get(id: string, version: string): Promise<TDefinition | null>;
+  /** Create an immutable definition version; an existing identity must be rejected. */
+  add(definition: TDefinition): Promise<void>;
 }
 export interface InstanceRepository {
   get(id: string): Promise<WorkflowInstance | null>;

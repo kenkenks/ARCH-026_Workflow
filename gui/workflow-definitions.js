@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const {readJsonFile,writeJsonFile}=require('../src/adapters/workflow-definition/json-files.cjs');
 const STEP_TYPES = new Set(['JOB','CHECK_FINAL','CHECK_PROVISIONAL','CHECK_WAIT','END']);
 const ROUTE_MODES = new Set(['BRANCH','REEVALUATE']);
 function validate(def) {
@@ -47,10 +48,10 @@ class DefinitionStore {
   constructor(directory){this.directory=directory;fs.mkdirSync(directory,{recursive:true});}
   file(id,version){return path.join(this.directory,`${encodeURIComponent(id)}__${encodeURIComponent(version)}.json`);}
   list(){return fs.readdirSync(this.directory).filter(f=>f.endsWith('.json')).map(f=>{try{const d=JSON.parse(fs.readFileSync(path.join(this.directory,f),'utf8'));return {id:d.id,version:d.version,steps:d.steps?.length||0};}catch{return null;}}).filter(Boolean).sort((a,b)=>a.id.localeCompare(b.id)||a.version.localeCompare(b.version));}
-  get(id,version){const file=this.file(id,version);if(!fs.existsSync(file))return null;return JSON.parse(fs.readFileSync(file,'utf8'));}
+  get(id,version){return readJsonFile(this.file(id,version));}
   save(def,{overwrite=false}={}){const errors=validate(def);if(errors.length){const e=new Error(errors.join(' / '));e.status=400;e.details=errors;throw e;}
     const file=this.file(def.id,def.version);if(fs.existsSync(file)&&!overwrite){const e=new Error('同じIDとバージョンが存在します。上書き指定が必要です');e.status=409;throw e;}
-    const tmp=file+'.tmp-'+process.pid;fs.writeFileSync(tmp,JSON.stringify(def,null,2)+'\n','utf8');fs.renameSync(tmp,file);return def;
+    writeJsonFile(file,def);return def;
   }
   remove(id,version){const file=this.file(id,version);if(!fs.existsSync(file))return false;fs.unlinkSync(file);return true;}
 }
