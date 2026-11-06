@@ -4,6 +4,17 @@ const path = require('node:path');
 const {readJsonFile,writeJsonFile}=require('../src/adapters/workflow-definition/json-files.cjs');
 const STEP_TYPES = new Set(['JOB','CHECK_FINAL','CHECK_PROVISIONAL','CHECK_WAIT','END']);
 const ROUTE_MODES = new Set(['BRANCH','REEVALUATE']);
+function storeError(code,status,message){const e=new Error(message);e.code=code;e.status=status;return e;}
+function storageFailure(error){
+  if(error?.status&&error?.code)return error;
+  const e=error instanceof SyntaxError
+    ? storeError('DEFINITION_DATA_CORRUPT',500,'保存済み定義の形式が不正です。既存ファイルは自動修復しません')
+    : error?.storageStage==='PUBLISH'
+      ? storeError('OUTCOME_UNKNOWN',503,'保存結果を確定できません。再保存せず、保存内容を確認してください')
+      : storeError('DEFINITION_STORE_UNAVAILABLE',503,'定義の保存領域を利用できません');
+  if(error?.cleanupDiagnostics)e.cleanupDiagnostics=[...error.cleanupDiagnostics];
+  return e;
+}
 function validate(def) {
   const errors=[];
   if (!def || typeof def !== 'object' || Array.isArray(def)) return ['定義はオブジェクトである必要があります'];
@@ -45,14 +56,52 @@ function validate(def) {
   return errors;
 }
 class DefinitionStore {
-  constructor(directory){this.directory=directory;fs.mkdirSync(directory,{recursive:true});}
-  file(id,version){return path.join(this.directory,`${encodeURIComponent(id)}__${encodeURIComponent(version)}.json`);}
-  list(){return fs.readdirSync(this.directory).filter(f=>f.endsWith('.json')).map(f=>{try{const d=JSON.parse(fs.readFileSync(path.join(this.directory,f),'utf8'));return {id:d.id,version:d.version,steps:d.steps?.length||0};}catch{return null;}}).filter(Boolean).sort((a,b)=>a.id.localeCompare(b.id)||a.version.localeCompare(b.version));}
-  get(id,version){return readJsonFile(this.file(id,version));}
-  save(def,{overwrite=false}={}){const errors=validate(def);if(errors.length){const e=new Error(errors.join(' / '));e.status=400;e.details=errors;throw e;}
-    const file=this.file(def.id,def.version);if(fs.existsSync(file)&&!overwrite){const e=new Error('同じIDとバージョンが存在します。上書き指定が必要です');e.status=409;throw e;}
-    writeJsonFile(file,def);return def;
+  constructor(directory){this.directory=directory;this.diagnostics=[];fs.mkdirSync(directory,{recursive:true});}
+  file(id,version){
+    if(![id,version].every(x=>typeof x==='string'&&x.trim()))throw storeError('INVALID_DEFINITION',400,'id と version は必須です');
+    try{return path.join(this.directory,`${encodeURIComponent(id)}__${encodeURIComponent(version)}.json`);}
+    catch{throw storeError('INVALID_DEFINITION',400,'id または version が不正です');}
   }
-  remove(id,version){const file=this.file(id,version);if(!fs.existsSync(file))return false;fs.unlinkSync(file);return true;}
+  existing(file,id,version){
+    let value;try{value=readJsonFile(file);}catch(error){throw storageFailure(error);}
+    if(value===null&&!fs.existsSync(file))return null;
+    if(!value||typeof value!=='object'||Array.isArray(value)||typeof value.id!=='string'||!value.id.trim()||typeof value.version!=='string'||!value.version.trim())
+      throw storeError('DEFINITION_DATA_CORRUPT',500,'保存済み定義の識別情報が不正です。既存ファイルは自動修復しません');
+    if(value.id!==id||value.version!==version)
+      throw storeError('DEFINITION_STORAGE_COLLISION',409,'保存先が別のID・Versionの定義と衝突しています。上書き・削除できません');
+    return value;
+  }
+  mutate(action){
+    // Directory-wide exclusion also covers legacy separator collisions and Windows case aliases.
+    // No expiry or automatic removal of a possibly live owner's lock.
+    const lock=path.join(this.directory,'.definition-write.lock');
+    try{fs.mkdirSync(lock);}catch(error){
+      if(error.code==='EEXIST')throw storeError('DEFINITION_STORE_BUSY',409,'定義の保存領域は使用中です。残存lockは所有者を確認してください');
+      throw storageFailure(error);
+    }
+    let primary,result;
+    try{result=action();}catch(error){primary=storageFailure(error);}
+    finally{
+      try{fs.rmdirSync(lock);}catch{
+        if(primary)primary.cleanupDiagnostics=[...(primary.cleanupDiagnostics||[]),'LOCK_RELEASE_FAILED'];
+        else this.diagnostics.push('LOCK_RELEASE_FAILED');
+      }
+    }
+    if(primary)throw primary;return result;
+  }
+  list(){return fs.readdirSync(this.directory).filter(f=>f.endsWith('.json')).map(f=>{try{const d=JSON.parse(fs.readFileSync(path.join(this.directory,f),'utf8'));return {id:d.id,version:d.version,steps:d.steps?.length||0};}catch{return null;}}).filter(Boolean).sort((a,b)=>a.id.localeCompare(b.id)||a.version.localeCompare(b.version));}
+  get(id,version){return this.existing(this.file(id,version),id,version);}
+  save(def,{overwrite=false}={}){
+    let snapshot;try{snapshot=JSON.parse(JSON.stringify(def));}catch{throw storeError('INVALID_DEFINITION',400,'定義をJSONとして保存できません');}
+    const errors=validate(snapshot);if(errors.length){const e=new Error(errors.join(' / '));e.status=400;e.details=errors;throw e;}
+    const file=this.file(snapshot.id,snapshot.version);
+    return this.mutate(()=>{
+      const current=this.existing(file,snapshot.id,snapshot.version);
+      if(current&&!overwrite)throw storeError('DEFINITION_ALREADY_EXISTS',409,'同じIDとバージョンが存在します。上書き指定が必要です');
+      const publication=writeJsonFile(file,snapshot);this.diagnostics.push(...publication.cleanupDiagnostics);
+      return snapshot;
+    });
+  }
+  remove(id,version){const file=this.file(id,version);return this.mutate(()=>{if(!this.existing(file,id,version))return false;fs.unlinkSync(file);return true;});}
 }
 module.exports={validate,DefinitionStore};
