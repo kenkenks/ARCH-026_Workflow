@@ -9,6 +9,8 @@
     "skipLibCheck": true
   },
   "include": [
+    "src/hello-client/**/*.ts",
+    "src/adapters/hello-http/**/*.ts",
     "src/hello/**/*.ts",
     "src/prototype/**/*.ts",
     "tests/prototype.test.ts",

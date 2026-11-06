@@ -5,9 +5,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.prototype.json",
     "demo": "npm run build && node dist/src/prototype/demo.js",
-    "test": "npm run build && node --test dist/tests/prototype.test.js tests/definitions.test.cjs tests/job-catalog.test.cjs tests/template-runner.test.cjs tests/exam-job-classes.test.cjs tests/hello/hello.test.cjs",
+    "test": "npm run build && node --test dist/tests/prototype.test.js tests/definitions.test.cjs tests/job-catalog.test.cjs tests/template-runner.test.cjs tests/exam-job-classes.test.cjs tests/hello/hello.test.cjs tests/hello-client.test.cjs",
     "gui": "npm run build && node gui/server.js",
-    "test:hello": "npm run build && node --test tests/hello/hello.test.cjs"
+    "test:hello": "npm run build && node --test tests/hello/hello.test.cjs",
+    "test:communication": "npm run build && node --test tests/hello-client.test.cjs"
   },
   "devDependencies": {
     "typescript": "~5.9.3"
