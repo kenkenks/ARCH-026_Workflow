@@ -9,6 +9,7 @@
     "skipLibCheck": true
   },
   "include": [
+    "src/hello/**/*.ts",
     "src/prototype/**/*.ts",
     "tests/prototype.test.ts",
     "src/prototype/node-shims.d.ts",
