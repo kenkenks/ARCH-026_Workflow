@@ -1,6 +1,11 @@
 'use strict';
 // Business record values are normalized strings; copy their known DTO structure.
 function copyRecord(record){return record?{...record,values:{...record.values}}:null;}
+function validCalendarDate(value){
+ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);if(!m)return false;
+ const year=+m[1],month=+m[2],day=+m[3],leap=year%4===0&&(year%100!==0||year%400===0);
+ return month>=1&&month<=12&&day>=1&&day<=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31][month-1];
+}
 /** Each business JOB owns its input schema, validation and volatile records. */
 class CExamBusinessJob {
   constructor(){this.records=new Map();}
@@ -11,11 +16,13 @@ class CExamBusinessJob {
     if(!input||typeof input!=='object'||Array.isArray(input))throw Object.assign(new Error('入力が不正です'),{status:400});
     const values={};
     for(const f of this.fields){
-      const value=String(input[f.key]??'').trim();
+      const raw=input[f.key];
+      if(raw!=null&&typeof raw!=='string')throw Object.assign(new Error(f.label+'は文字列が必要です'),{status:400,code:'INVALID_ARGUMENT'});
+      const value=(raw??'').trim();
       if(f.required&&!value)throw Object.assign(new Error(`${f.label}は必須です`),{status:400});
       if(value.length>500)throw Object.assign(new Error(`${f.label}が長すぎます`),{status:400});
       if(f.options&&!f.options.includes(value))throw Object.assign(new Error(`${f.label}が不正です`),{status:400});
-      if(value&&f.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(value))throw Object.assign(new Error('審査日が不正です'),{status:400});
+      if(value&&f.type==='date'&&!validCalendarDate(value))throw Object.assign(new Error('審査日が不正です'),{status:400});
       if(value&&f.type==='time'&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))throw Object.assign(new Error('開始時刻が不正です'),{status:400});
       values[f.key]=value;
     }
