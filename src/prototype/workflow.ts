@@ -1,19 +1,30 @@
 /** ARCH-026 experimental runnable core. Independent of the existing engine skeleton. */
+export class WorkflowValidationError extends Error {
+  readonly code='INVALID_ARGUMENT';
+  constructor(){super('Invalid workflow input');this.name='WorkflowValidationError';}
+}
+function requireText(value:unknown):void{if(typeof value!=='string'||!value.trim())throw new WorkflowValidationError();}
+function requireObject(value:unknown):asserts value is Record<string,unknown>{if(!value||typeof value!=='object'||Array.isArray(value))throw new WorkflowValidationError();}
+function requireJob(value:unknown):void{
+  requireObject(value);requireText(value.name);
+  if(typeof value.execute!=='function')throw new WorkflowValidationError();
+  if(value instanceof CCheckJob&&typeof value.evaluateBranch!=='function')throw new WorkflowValidationError();
+}
 export type StepNo = number;
 export type TraceStatus = 'COMPLETED' | 'FAILED' | 'LIMIT_REACHED';
 export interface IBool { evaluate(): boolean | Promise<boolean>; }
 export abstract class CJob {
-  constructor(public readonly name: string) {}
+  constructor(public readonly name: string) { requireText(name); }
   abstract execute(): Promise<void>;
 }
 export class CDummyJob extends CJob {
   /** Synchronous and asynchronous callbacks both complete before the Job completes. */
-  constructor(name: string, private readonly action: () => void | Promise<void> = () => {}) { super(name); }
+  constructor(name: string, private readonly action: () => void | Promise<void> = () => {}) { super(name); if(typeof action!=='function')throw new WorkflowValidationError(); }
   async execute(): Promise<void> { await this.action(); }
 }
 export class CCheckJob extends CJob {
   constructor(name: string, private readonly condition: IBool,
-    public readonly returnStepNo: StepNo, public readonly nextStepNo: StepNo) { super(name); }
+    public readonly returnStepNo: StepNo, public readonly nextStepNo: StepNo) { super(name); requireObject(condition);if(typeof condition.evaluate!=='function'||!Number.isSafeInteger(returnStepNo)||!Number.isSafeInteger(nextStepNo))throw new WorkflowValidationError(); }
   async execute(): Promise<void> { /* workflow invokes evaluateBranch instead */ }
   async evaluateBranch(): Promise<{result: boolean; target: StepNo}> {
     const result = await this.condition.evaluate();
@@ -24,7 +35,8 @@ export class CCheckJob extends CJob {
 export class CSequenceBool implements IBool {
   private index = 0;
   constructor(private readonly values: readonly boolean[]) {
-    if (values.length === 0) throw new Error('At least one boolean is required');
+    if(!Array.isArray(values)||values.length===0||Array.from(values).some(value=>typeof value!=='boolean'))throw new WorkflowValidationError();
+    this.values=[...values];
   }
   evaluate(): boolean { return this.values[Math.min(this.index++, this.values.length - 1)]; }
 }
@@ -37,6 +49,23 @@ export interface RunSnapshot {
   runId: string; currentStepNo: StepNo | null; status: TraceStatus | 'RUNNING';
   history: readonly TraceEntry[];
   failure?: {code:'BEFORE_STEP_FAILED'; stepNo:StepNo; summary:string};
+}
+/** Validate known DTO fields only; extension metadata remains compatible. */
+function validateSnapshot(value:unknown):asserts value is RunSnapshot{
+  requireObject(value);requireText(value.runId);
+  if(!['RUNNING','COMPLETED','FAILED','LIMIT_REACHED'].includes(value.status as string)||
+    (value.currentStepNo!==null&&!Number.isSafeInteger(value.currentStepNo))||!Array.isArray(value.history))throw new WorkflowValidationError();
+  for(const entry of value.history){
+    requireObject(entry);requireText(entry.job);requireText(entry.at);
+    if(!Number.isSafeInteger(entry.order)||(entry.order as number)<1||!Number.isSafeInteger(entry.stepNo)||
+      !['DONE','TRUE','FALSE','ERROR'].includes(entry.result as string)||
+      (entry.nextStepNo!==null&&!Number.isSafeInteger(entry.nextStepNo))||
+      (entry.error!==undefined&&typeof entry.error!=='string'))throw new WorkflowValidationError();
+  }
+  if(value.failure!==undefined){
+    requireObject(value.failure);requireText(value.failure.summary);
+    if(value.failure.code!=='BEFORE_STEP_FAILED'||!Number.isSafeInteger(value.failure.stepNo))throw new WorkflowValidationError();
+  }
 }
 /** Copy the current snapshot DTO: TraceEntry and failure contain scalar fields. */
 function copySnapshot(snapshot: RunSnapshot): RunSnapshot {
@@ -58,9 +87,11 @@ export interface IWorkflowHistoryStore { save(snapshot: RunSnapshot): void | Pro
 export class CMemoryHistoryStore implements IWorkflowHistoryStore {
   private snapshots = new Map<string, RunSnapshot>();
   save(snapshot: RunSnapshot): void {
+    validateSnapshot(snapshot);
     this.snapshots.set(snapshot.runId, copySnapshot(snapshot));
   }
   load(runId: string): RunSnapshot | undefined {
+    requireText(runId);
     const snapshot=this.snapshots.get(runId);
     return snapshot ? copySnapshot(snapshot) : undefined;
   }
@@ -71,7 +102,9 @@ export class CWorkflow {
   private readonly steps = new Map<StepNo, Step>();
   private running = false;
   constructor(steps: readonly Step[], private readonly store: IWorkflowHistoryStore) {
+    if(!Array.isArray(steps)||!store||typeof store.save!=='function'||typeof store.load!=='function')throw new WorkflowValidationError();
     for (const step of steps) {
+      requireObject(step as unknown);requireJob(step.job);
       if (!Number.isSafeInteger(step.no) || this.steps.has(step.no)) throw new Error(`Invalid or duplicate step: ${step.no}`);
       this.steps.set(step.no, step);
     }
@@ -88,6 +121,9 @@ export class CWorkflow {
   /** One active run per object. Independent runs need fresh Job/Check instances;
    * sequential reuse does not reset their internal state. Not a resume API. */
   async run(runId: string, startStepNo: StepNo, maxExecutions = 100, beforeStep?: () => Promise<void>): Promise<RunSnapshot> {
+    requireText(runId);
+    if(beforeStep!==undefined&&typeof beforeStep!=='function')throw new WorkflowValidationError();
+    for(const step of this.steps.values())requireJob(step.job);
     if (!this.steps.has(startStepNo)) throw new Error(`Unknown start step: ${startStepNo}`);
     if (!Number.isSafeInteger(maxExecutions) || maxExecutions < 1) throw new Error('Invalid execution limit');
     let reserved = activeRuns.get(this.store);
