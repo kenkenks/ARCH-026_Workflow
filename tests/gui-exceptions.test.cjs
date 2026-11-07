@@ -110,10 +110,11 @@ test('HTTP WAITING can be re-evaluated and explicit CHECK ERROR has diagnostics'
  await api('/api/definitions',{id:'check',version:'v1',startStepId:'C',eventRoutes:[],steps:[{id:'C',type:'CHECK_FINAL',nextStepId:'END'},{id:'END',type:'END'}]});const y=await ticket();await api('/api/ticket-action',{ticketId:y.ticketId,action:'start',definitionId:'check',definitionVersion:'v1'});await api('/api/step',{checkResult:'ERROR'});const s=await state();assert.equal(s.status,'FAILED');assert.equal(s.diagnostic.code,'CHECK_ERROR');assert.deepEqual(s.history[0].diagnostic,s.diagnostic);
 }));
 
-test('Ticket completion failure remains outside recovery scope and never reruns a successful Job',t=>fixture(t,async({control,api,ticket,start,state})=>{
+test('Ticket completion failure is PENDING and explicit recovery never reruns a successful Job',t=>fixture(t,async({control,api,ticket,start,state})=>{
  const x=await ticket();await start(x.ticketId);await api('/api/step',{});control.completeFault=true;
- await api('/api/step',{},500);assert.equal((await state()).status,'COMPLETED');assert.equal((await api('/api/tickets/'+x.ticketId)).status,'IN_PROGRESS');
+ await api('/api/step',{},503);assert.equal((await state()).status,'COMPLETED');assert.equal((await state()).ticketCompletion.result,'PENDING');assert.equal((await api('/api/tickets/'+x.ticketId)).status,'IN_PROGRESS');
  await api('/api/step',{},500);assert.equal(control.calls,1);assert.equal((await state()).status,'COMPLETED');
+ control.completeFault=false;const runId=(await state()).runId;await api('/api/ticket-completion/reconcile',{ticketId:x.ticketId,runId});assert.equal((await state()).ticketCompletion.result,'CONFIRMED');assert.equal(control.calls,1);assert.equal((await state()).history.length,2);
 }));
 
 test('a start body accepted before uncertainty cannot bypass the hold when it arrives late',t=>fixture(t,async({control,ticket,start,state,server,base})=>{

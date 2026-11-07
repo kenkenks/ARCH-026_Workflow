@@ -9,6 +9,7 @@ const { JobCatalog, ALLOWED_CLASSES } = require('./job-catalog.js');
 const {prepare} = require('./template-runner.js');
 const {WorkflowRuntime} = require('./workflow-runtime.js');
 const {ExamJobs} = require('./exam-jobs.js');
+const {TicketCompletion}=require('./ticket-completion.js');
 const examJobs=new ExamJobs();
 const dataDirectory=process.env.ARCH026_GUI_DATA_DIR||path.join(__dirname,'data');
 const jobs = new JobCatalog(path.join(dataDirectory,'job-catalog.json'));
@@ -20,6 +21,7 @@ let runCounter = 0;
 let state;
 let runtime = null;
 let pendingStart = null;
+let completion = null;
 function createState(template=null) {
   const store = new CMemoryHistoryStore();
   // Fixed/template previews are exclusively simulated; annotate the stored history.
@@ -36,7 +38,7 @@ function createState(template=null) {
   const monitor = new CWorkflowMonitor(store);
   return {store, workflow, monitor, runId:`gui-${++runCounter}`, permits:[], waiting:[], running:false, done:false, error:null,template:template?{id:template.definition.id,version:template.definition.version,steps:template.steps}:null,startStepNo:template?.start??10};
 }
-function init(template=null) {const next=createState(template);runtime=null;activeTicketId=null;state=next;}
+function init(template=null) {const next=createState(template);runtime=null;activeTicketId=null;completion=null;state=next;}
 init();
 function gate(s) { return new Promise(resolve => { if (s.permits.length) {s.permits.shift(); resolve();} else s.waiting.push(resolve); }); }
 function step() {
@@ -55,29 +57,37 @@ async function snapshot() {
     const steps=runtime.definition.steps.map((x,i)=>({id:x.id,no:(i+1)*10,name:x.type==='JOB'?(jobs.list().find(j=>j.keyword===x.jobId)?.displayName||x.jobId):x.type,type:x.type,jobId:x.jobId}));
     const history=r.history.map(h=>{const step=steps.find(x=>x.id===h.stepId);const c=counts.get(h.stepId)||{stepNo:step?.no,executions:0,lastResult:''};c.executions++;c.lastResult=h.result;counts.set(h.stepId,c);return {...h,stepNo:step?.no,job:step?.name,nextStepNo:steps.find(x=>x.id===h.nextStepId)?.no??null};});
     const current=runtime.steps.get(r.currentStepId);const jobForm=r.executionMode==='NORMAL'&&current?.type==='JOB'?examJobs.describe(current.jobId,state.runId,current.id,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass):null;
-    return {startIssue:pendingStart?{...pendingStart}:null,startDiagnostic:state.startDiagnostic?{...state.startDiagnostic}:null,diagnostic:r.error,executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed,jobForm,activeTicketId,runId:state.runId,status:r.status,currentStepNo:steps.find(x=>x.id===r.currentStepId)?.no??null,history,summary:[...counts.values()],error:pendingStart?.summary||r.error?.summary||state.error,done:['COMPLETED','FAILED'].includes(r.status),pending:r.pending,template:{id:r.definitionId,version:r.definitionVersion,steps},runtime:true};
+    return {ticketCompletion:completion?.snapshot()??null,startIssue:pendingStart?{...pendingStart}:null,startDiagnostic:state.startDiagnostic?{...state.startDiagnostic}:null,diagnostic:r.error,executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed,jobForm,activeTicketId,runId:state.runId,status:r.status,currentStepNo:steps.find(x=>x.id===r.currentStepId)?.no??null,history,summary:[...counts.values()],error:pendingStart?.summary||r.error?.summary||completion?.message||state.error,done:['COMPLETED','FAILED'].includes(r.status),pending:r.pending,template:{id:r.definitionId,version:r.definitionVersion,steps},runtime:true};
   }
   const s=state;
   const data=await s.monitor.get(s.runId);
-  return {startIssue:pendingStart?{...pendingStart}:null,executionMode:'DEMO',resultKind:data?.resultKind||'READY',simulatedJobUsed:data?.simulatedJobUsed||false,activeTicketId,runId:s.runId, status:data?.status || 'READY', currentStepNo:data?.currentStepNo ?? (data?'END':s.startStepNo), history:data?.history || [], summary:await s.monitor.summary(s.runId), error:pendingStart?.summary||s.error, done:s.done,template:s.template};
+  return {ticketCompletion:null,startIssue:pendingStart?{...pendingStart}:null,executionMode:'DEMO',resultKind:data?.resultKind||'READY',simulatedJobUsed:data?.simulatedJobUsed||false,activeTicketId,runId:s.runId, status:data?.status || 'READY', currentStepNo:data?.currentStepNo ?? (data?'END':s.startStepNo), history:data?.history || [], summary:await s.monitor.summary(s.runId), error:pendingStart?.summary||s.error, done:s.done,template:s.template};
 }
 function httpFailure(value){
   const internal=()=>({status:500,body:{error:'内部処理で例外が発生しました',code:'INTERNAL'}});
   try {
   // Do not read arbitrary properties or stringify unknown thrown values.
   if(!(value instanceof Error))return internal();
-  const safeCodes={RUNTIME_BUSY:'同一Runtimeの工程を実行中です',EXECUTION_CHANGED:'実行対象が変更されました',TICKET_START_FAILED:'Ticketの紐付けを確認できませんでした',TICKET_START_OUTCOME_UNKNOWN:'Ticketの開始結果が不明です。状態確認が必要です'};
+  const safeCodes={TICKET_COMPLETION_BUSY:'同じ実行のTicket完了調整を処理中です',TICKET_COMPLETION_UNRESOLVED:'Ticketの完了調整が未確定です。旧実行を保持します',TICKET_COMPLETION_TARGET_MISMATCH:'Ticketまたは実行IDが一致しません',TICKET_COMPLETION_NOT_ELIGIBLE:'通常実行のEND到達を確認できません',RUNTIME_BUSY:'同一Runtimeの工程を実行中です',EXECUTION_CHANGED:'実行対象が変更されました',TICKET_START_FAILED:'Ticketの紐付けを確認できませんでした',TICKET_START_OUTCOME_UNKNOWN:'Ticketの開始結果が不明です。状態確認が必要です'};
   if(Object.hasOwn(safeCodes,value.code))return {status:value.code==='TICKET_START_OUTCOME_UNKNOWN'?503:value.code==='TICKET_START_FAILED'?500:409,body:{error:safeCodes[value.code],code:value.code}};
   if([400,401,403,404,409,413,415].includes(value.status))return {status:value.status,body:{error:value.message}};
   return {status:value.status===503?503:500,body:{error:'内部処理で例外が発生しました',code:'INTERNAL'}};
   }catch{return internal();}
 }
 function send(res,code,body,type='application/json; charset=utf-8') {res.writeHead(code,{'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(type.startsWith('application/json')?JSON.stringify(body):body);}
+function requireCompletionClear(){
+ if(completion?.blocked)throw Object.assign(Error('Ticketの完了調整が未確定です。旧実行を保持します'),{status:409,code:completion.inProgress?'TICKET_COMPLETION_BUSY':'TICKET_COMPLETION_UNRESOLVED'});
+}
+function completionResponse(value){
+ const status=value.result==='CONFIRMED'?200:value.result==='CONFLICT'?409:503;
+ return {status,body:{ok:status===200,ticketCompletion:value,...(status===200?{}:{code:value.code,error:value.result==='CONFLICT'?'Ticketの完了情報が競合しています':'Ticketの完了更新が未確認です。専用APIで再確認してください'})}};
+}
 async function readBody(req){let body='';for await(const chunk of req){body+=chunk;if(body.length>65536)throw Error('Request too large');}return JSON.parse(body||'{}');}
 const server=http.createServer(async(req,res)=>{
   // Capture before reading an asynchronous request body. A delayed request must not
   // silently switch to whichever execution happens to be global later.
   const targetRuntime=runtime,targetState=state,targetRunId=state.runId,targetTicketId=activeTicketId;
+  const targetCompletion=completion;
   const targetStepId=targetRuntime?.currentStepId;
   const priorDiagnostic=targetRuntime?.error;
   const requireTarget=()=>{
@@ -88,6 +98,7 @@ const server=http.createServer(async(req,res)=>{
   try {
     const url=new URL(req.url,`http://localhost:${port}`);
     if(pendingStart&&req.method!=='GET')throw Object.assign(Error('開始結果が不明です'),{code:'TICKET_START_OUTCOME_UNKNOWN'});
+    if(completion?.inProgress&&req.method!=='GET'&&url.pathname!=='/api/ticket-completion/reconcile')requireCompletionClear();
     if(req.method==='GET' && url.pathname==='/') return send(res,200,fs.readFileSync(path.join(__dirname,'index.html'),'utf8'),'text/html; charset=utf-8');
     if(req.method==='GET' && url.pathname==='/api/job-classes') return send(res,200,[...ALLOWED_CLASSES]);
     if(req.method==='GET' && url.pathname==='/api/jobs') return send(res,200,jobs.list());
@@ -107,11 +118,13 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='POST' && url.pathname==='/api/ticket-action') {
       const {ticketId,action,patch,definitionId,definitionVersion,executionMode='NORMAL'}=await readBody(req);let t;
       if(pendingStart)throw Object.assign(Error('開始結果が不明です'),{code:'TICKET_START_OUTCOME_UNKNOWN'});
+      if(completion?.inProgress)requireCompletionClear();
       if(action==='edit')t=tickets.edit(ticketId,patch||{});
       else if(action==='submit')t=tickets.submit(ticketId);
       else if(action==='cancel')t=tickets.cancel(ticketId);
       else if(action==='start'){
         requireTarget();
+        requireCompletionClear();
         if(!['NORMAL','DEMO'].includes(executionMode))return send(res,400,{error:'実行モードが不正です'});
         if(runtime&&!['COMPLETED','FAILED'].includes(runtime.status))return send(res,409,{error:'Workflow is running'});
         if(state.running&&!state.done)return send(res,409,{error:'Workflow is running'});
@@ -137,6 +150,7 @@ const server=http.createServer(async(req,res)=>{
           }
         }
         const nextRuntime=new WorkflowRuntime(def,handlers,{executionMode,simulatedJobIds,runId});
+        const nextCompletion=executionMode==='NORMAL'?new TicketCompletion(tickets,nextRuntime,ticketId,runId):null;
         const nextState=createState();nextState.runId=runId;
         // Initialize candidates privately. Publish only after the binding is observed.
         if(executionMode==='NORMAL'){
@@ -156,7 +170,7 @@ const server=http.createServer(async(req,res)=>{
           t=observed;
           if(threw){nextState.startDiagnostic={code:'TICKET_START_RECONCILED',summary:'紐付け処理で例外が発生しましたが、Ticketの紐付け状態を照合しました',runId,ticketId,executionMode};t={...observed,startReconciliation:'MATCHED_AFTER_EXCEPTION'};}
         }else t={...ticket,executionMode}; // Demo never attaches a business Ticket.
-        state=nextState;runtime=nextRuntime;activeTicketId=executionMode==='NORMAL'?ticketId:null;
+        state=nextState;runtime=nextRuntime;completion=nextCompletion;activeTicketId=executionMode==='NORMAL'?ticketId:null;
       } else return send(res,400,{error:'Unknown action'});
       return send(res,200,t);
     }
@@ -171,6 +185,13 @@ const server=http.createServer(async(req,res)=>{
       return send(res,200,{ok:true,completedAt:record.completedAt});
     }
     if(req.method==='GET' && url.pathname==='/api/state') return send(res,200,await snapshot());
+    if(req.method==='POST' && url.pathname==='/api/ticket-completion/reconcile'){
+      const body=await readBody(req);requireTarget();
+      if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==2||!['ticketId','runId'].every(key=>typeof body[key]==='string'&&body[key].trim()))return send(res,400,{error:'ticketIdとrunIdを指定してください'});
+      if(!targetCompletion||body.ticketId!==targetTicketId||body.runId!==targetRunId)return send(res,409,{error:'完了調整の対象実行が一致しません',code:'TICKET_COMPLETION_TARGET_MISMATCH'});
+      const result=await targetCompletion.reconcile(body.ticketId,body.runId);requireTarget();
+      const response=completionResponse(result);return send(res,response.status,response.body);
+    }
     if(req.method==='POST' && url.pathname==='/api/step') {
       if(targetRuntime){
         const body=await readBody(req);
@@ -178,12 +199,15 @@ const server=http.createServer(async(req,res)=>{
         if(targetRuntime.currentStepId!==targetStepId)throw Object.assign(Error('実行工程が変更されました'),{code:'EXECUTION_CHANGED',status:409});
         const r=await targetRuntime.advance({checkResult:body.checkResult});
         requireTarget();
-        if(r.executionMode==='NORMAL'&&!r.simulatedJobUsed&&r.status==='COMPLETED'&&targetTicketId&&tickets.get(targetTicketId)?.status==='IN_PROGRESS')tickets.complete(targetTicketId);
-        return send(res,200,{ok:true,status:r.status,executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed});
+        let response={status:200,body:{ok:true}};
+        if(r.executionMode==='NORMAL'&&!r.simulatedJobUsed&&r.status==='COMPLETED'&&targetCompletion){
+          response=completionResponse(await targetCompletion.reconcile(targetTicketId,targetRunId));requireTarget();
+        }
+        return send(res,response.status,{...response.body,status:r.status,executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed});
       }
       step();return send(res,200,{ok:true});
     }
-    if(req.method==='POST' && url.pathname==='/api/reset') {if(runtime && !['COMPLETED','FAILED'].includes(runtime.status))return send(res,409,{error:'実行中のひな型はリセットできません'});if(activeTicketId && tickets.get(activeTicketId)?.status==='IN_PROGRESS') return send(res,409,{error:'チケット実行中はリセットできません。'});if(state.running && !state.done) return send(res,409,{error:'実行中はリセットできません。完了後にリセットしてください。'});init();return send(res,200,{ok:true});}
+    if(req.method==='POST' && url.pathname==='/api/reset') {requireCompletionClear();if(runtime && !['COMPLETED','FAILED'].includes(runtime.status))return send(res,409,{error:'実行中のひな型はリセットできません'});if(activeTicketId && tickets.get(activeTicketId)?.status==='IN_PROGRESS') return send(res,409,{error:'チケット実行中はリセットできません。'});if(state.running && !state.done) return send(res,409,{error:'実行中はリセットできません。完了後にリセットしてください。'});init();return send(res,200,{ok:true});}
     send(res,404,{error:'Not found'});
   } catch(e){
     const response=httpFailure(e);

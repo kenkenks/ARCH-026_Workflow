@@ -62,7 +62,36 @@
 - 通常開始は候補Runtime/状態を非公開で生成し、Ticketを一度だけ紐付け、Ticketを再取得してID・Version・runId・IN_PROGRESSを照合してから公開する。紐付け例外後でも状態が一致すれば公開し、`startReconciliation=MATCHED_AFTER_EXCEPTION` と `/api/state.startDiagnostic` に状態照合の事実を残す。これは紐付けメソッドの正常終了を証明するものではない。
 - 紐付けが例外になり、旧OPEN状態・未紐付けを観測した場合は `TICKET_START_FAILED` / 500。旧Runtimeを変更せず、候補は破棄する。状態を観測できない・期待と異なる場合は `TICKET_START_OUTCOME_UNKNOWN` / 503。候補Runtimeは公開せず、`/api/state.startIssue` に対象Ticket/runIdを残す。
 - 開始結果不明はプロセス内の保留として保持し、次の通常/デモ開始、step、業務入力、resetなどの変更要求を拒否する。状態が読めるようになっても自動解除しない。今回は保留の解除/回復APIは実装しない。再起動で保留・メモリTicketとも消えるため、運用での再起動を安全な回復と見なさず、事前に状態を確認すること。永続的な保留保証は対象外。
-- デモはTicketを紐付けず、従来どおり模擬制御フローのみ。Ticket業務状態は追加しない。END後のTicket完了更新失敗の回復は今回対象外であり、Runtime COMPLETED/Ticket IN_PROGRESSが残り得る。成功Jobを再実行する処理は追加しない。
+- デモはTicketを紐付けず、従来どおり模擬制御フローのみ。Ticket業務状態は追加しない。P2-2A時点ではEND後のTicket完了更新失敗の回復は対象外だったが、P2-2Bで以下の専用回復を追加した。成功Jobを再実行する処理は追加しない。
 - CDummyJobはcallbackを `() => void | Promise<void>` とし、同期/非同期ともawaitする。CJob.executeのPromise<void>契約は維持し、rejectは通常のJob失敗として扱う。模擬Jobである位置づけは変更しない。
 
 追加試験は `tests/workflow-exceptions.test.cjs`、`tests/gui-exceptions.test.cjs`、Prototypeのasync callback試験。全て専用一時領域・メモリで故障注入し、既存DBや保護対象文書を変更しない。
+
+## P2-2B：Ticket完了調整
+
+`gui/ticket-completion.js` のTicketCompletionを現在の通常実行ごとに1個生成する。END到達時と `POST /api/ticket-completion/reconcile` は同じ処理を使う。Job/Check、`runtime.advance()`、Workflow履歴、Ticket履歴には触れない。既存のCTicketManager/Ticket Repositoryの公開契約・業務状態は変更しない。
+
+回復要求はJSON `{ "ticketId": "対象Ticket ID", "runId": "対象実行ID" }` の2項目だけ。Runtime・要求・Ticketの各ID、Workflow ID/Versionを照合し、NORMAL・模擬Handler未使用・Runtime COMPLETEDの場合のみ調整する。FAILED、ACTIVE、DEMO、別実行への要求は409で拒否し、技術状態も変更しない。待ち行列や自動再送は作らない。
+
+| 観測したTicket状態 | 処理・結果 | HTTP |
+| --- | --- | --- |
+| 識別情報一致・COMPLETED | 保存せずCONFIRMED。updatedAtも変更しない | 200 |
+| 識別情報一致・IN_PROGRESS | complete()を1回呼び、正常/例外のどちらでも再取得して判定 | 以下の結果による |
+| 再取得後に一致・COMPLETED | CONFIRMED。保存例外後はCONFIRMED_AFTER_EXCEPTIONの診断コード | 200 |
+| 再取得後も一致・IN_PROGRESS | PENDING。次の明示的回復要求でのみ再試行 | 503 |
+| 不存在・取得例外 | UNKNOWN。Ticketを変更せず状態照合を待つ | 503 |
+| ID/実行ID/Workflow/Version不一致、OPEN/DRAFT/CANCELLED等 | CONFLICT。自動完了しない | 409 |
+
+レスポンスの `ticketCompletion`、および `/api/state.ticketCompletion` は `ticketId` / `runId` / `workflowId` / `workflowVersion` / `result` / `checkedAt` / 安全な固定`code` を返す。stateでは `inProgress` も返す。最初の照合中はresult=UNKNOWN、checkedAt=nullであり、未観測を表す。checkedAtは確認試行時刻であり、保存操作の成功時刻ではない。内部例外や任意の例外messageは公開しない。
+
+読戻しは状態の照合であり、保存メソッドが正常終了した証明ではない。保存後例外でも望む状態を確認すれば再保存しない。Runtime COMPLETEDは維持し、Ticket調整結果を独立表示する。GUIモニターは「Ticket完了確認済み／更新待ち／結果不明／情報競合」を区別する。PENDING等のEND応答でもレスポンス内のRuntime statusはCOMPLETEDのまま。
+
+同じ調整オブジェクトのガードを最初のawait前に取得し、全経路でfinally解放する。重複調整は409/TICKET_COMPLETION_BUSY。調整中の開始・reset・Ticket編集/取消し等も拒否する。PENDING/UNKNOWN/CONFLICTと未確認のEND到達では開始・resetを409/TICKET_COMPLETION_UNRESOLVEDで拒否し、旧Runtimeを保持する。受信済みの遅着開始要求も本文読込後に再チェックする。
+
+状態取得だけでは自動照合しない。CONFLICTは原因の確認・修正後、明示的な回復要求で再照合する。CONFIRMEDになるまで旧実行を破棄しない。誤った要求IDや重複要求は保存・Job・履歴・既存の調整結果を変更しない。
+
+開始結果不明の `startIssue` と完了調整は別管理。開始保留中は従来どおり変更要求を503で拒否し、完了APIで開始保留を解除することはできない。CONFIRMED後は通常の開始/reset制約へ戻る。新しい認証・権限・公開listen設定は追加せず、既存の127.0.0.1向け開発Hostと同じアクセス境界を使う。
+
+保証は同一Hostプロセスの協調するGUI API要求まで。Ticket Repositoryは同期・CASなしであり、直接Repositoryを書き換える処理や別プロセスとの競合まで原子性を保証しない。調整中のPromise待機はテスト用の境界注入でも検証するが、非同期Ticket永続化Adapterを正式導入したものではない。Runtime・Ticket・技術状態はメモリのみで、再起動後の復元・回復は対象外。通知やTicket完了履歴も追加しない。
+
+試験は `tests/ticket-completion.test.cjs`、`tests/gui-ticket-completion.test.cjs`。保存前後の例外、読戻し不能、状態/識別情報不一致、重複調整、開始/resetとの競合、Job/履歴/保存回数/updatedAtの不変性を隔離環境で検証する。
