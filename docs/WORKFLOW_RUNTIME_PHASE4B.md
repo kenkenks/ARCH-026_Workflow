@@ -51,3 +51,18 @@
 - 保証は同じプロセス・同じRuntime/Storeオブジェクトの範囲。別Storeオブジェクトが同じ物理保存先を指す場合や別プロセス間の排他は保証しない。永続化/CAS・分散ロック・外部業務のexactly-onceは対象外。
 
 並行試験は `tests/workflow-concurrency.test.cjs`、実HTTPとGUI開始ガードは `tests/gui-runtime-concurrency.test.cjs`。PromiseとHTTP受信イベントで順序を制御し、既存DBを使わず一時領域で実行する。ブラウザ操作の試験はDOMスタブでの送信ガード検証であり、実ブラウザE2Eではない。
+
+## P2-2A：例外・履歴保存・Ticket開始
+
+- Runtimeのsnapshotに `error`、ERROR/FAILED履歴に任意の `diagnostic` を追加する。項目は `code` / `stepId` / 固定文言の`summary` / `executionMode` / `runId`。GUI Serverは `/api/state.diagnostic` と履歴から再取得でき、既存の表示用 `error` は概要文字列を維持する。CompositionはrunIdを注入する。単体で未指定の場合はnull（未割当）。
+- コードは `HANDLER_EXCEPTION`、`INVALID_JOB_RESULT`、`CHECK_ERROR`、`JOB_FAILED`、`HANDLER_NOT_FOUND`。原例外のmessage・stack・任意オブジェクトは診断へ転記しない。Runtimeはローカル呼出元へ原例外を再送出するが、Serverは非Error例外も含め安全なJSONへ正規化する。
+- PrototypeのbeforeStep失敗は、Jobを実行せずFAILED snapshotを保存して `WorkflowRunError(code=BEFORE_STEP_FAILED)` を送出する。`cause`に元例外を保持する。snapshotの任意 `failure` はrunレベルの失敗であり、架空のJob ERROR履歴を追加しない。
+- 履歴saveが例外を返すと `HISTORY_SAVE_OUTCOME_UNKNOWN` / `outcome=UNKNOWN`。`attemptedSnapshot`、原実行例外の`cause`、保存例外の`storageCause`を区別して保持する。事後loadは `observation`（AVAILABLE/ABSENT/UNAVAILABLE）として返す。保存前後の例外をStore契約だけでは証明できないため、読戻し一致やCOMPLETEDを観測してもsave成功と断定しない。
+- saveを自動再送しない。実行済みJobを巻き戻さず、保存済みrunIdの拒否を維持する。予約はfinallyで解放する。上記Errorのcauseやsnapshotはローカル診断用であり、HTTPへ無条件serializeしない。原例外と保存例外の保持は新しいトランザクションや再開機構を意味しない。
+- 通常開始は候補Runtime/状態を非公開で生成し、Ticketを一度だけ紐付け、Ticketを再取得してID・Version・runId・IN_PROGRESSを照合してから公開する。紐付け例外後でも状態が一致すれば公開し、`startReconciliation=MATCHED_AFTER_EXCEPTION` と `/api/state.startDiagnostic` に状態照合の事実を残す。これは紐付けメソッドの正常終了を証明するものではない。
+- 紐付けが例外になり、旧OPEN状態・未紐付けを観測した場合は `TICKET_START_FAILED` / 500。旧Runtimeを変更せず、候補は破棄する。状態を観測できない・期待と異なる場合は `TICKET_START_OUTCOME_UNKNOWN` / 503。候補Runtimeは公開せず、`/api/state.startIssue` に対象Ticket/runIdを残す。
+- 開始結果不明はプロセス内の保留として保持し、次の通常/デモ開始、step、業務入力、resetなどの変更要求を拒否する。状態が読めるようになっても自動解除しない。今回は保留の解除/回復APIは実装しない。再起動で保留・メモリTicketとも消えるため、運用での再起動を安全な回復と見なさず、事前に状態を確認すること。永続的な保留保証は対象外。
+- デモはTicketを紐付けず、従来どおり模擬制御フローのみ。Ticket業務状態は追加しない。END後のTicket完了更新失敗の回復は今回対象外であり、Runtime COMPLETED/Ticket IN_PROGRESSが残り得る。成功Jobを再実行する処理は追加しない。
+- CDummyJobはcallbackを `() => void | Promise<void>` とし、同期/非同期ともawaitする。CJob.executeのPromise<void>契約は維持し、rejectは通常のJob失敗として扱う。模擬Jobである位置づけは変更しない。
+
+追加試験は `tests/workflow-exceptions.test.cjs`、`tests/gui-exceptions.test.cjs`、Prototypeのasync callback試験。全て専用一時領域・メモリで故障注入し、既存DBや保護対象文書を変更しない。

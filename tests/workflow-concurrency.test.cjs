@@ -97,9 +97,12 @@ for(const stage of ['load','save','beforeStep'])test(`CWorkflow ${stage} excepti
  if(stage==='load')store.load=id=>{if(fail){fail=false;throw Error('load fault');}return baseLoad(id);};
  if(stage==='save')store.save=s=>{if(fail){fail=false;throw Error('save fault');}baseSave(s);};
  const wf=new CWorkflow([{no:1,job:new CDummyJob('A')}],store);
- await assert.rejects(wf.run('failed',1,10,stage==='beforeStep'?async()=>{throw Error('before fault');}:undefined),/fault/);
+ await assert.rejects(wf.run('failed',1,10,stage==='beforeStep'?async()=>{throw Error('before fault');}:undefined),e=>{
+  if(stage==='load')return /load fault/.test(e.message);
+  assert.equal(e.code,stage==='beforeStep'?'BEFORE_STEP_FAILED':'HISTORY_SAVE_OUTCOME_UNKNOWN');assert.match(e.cause.message,/fault/);return true;
+ });
  if(stage!=='beforeStep')assert.equal((await wf.run('failed',1)).status,'COMPLETED');
- else await assert.rejects(wf.run('failed',1),/already exists/); // Existing RUNNING history must not be silently resumed.
+ else {assert.equal(store.load('failed').status,'FAILED');await assert.rejects(wf.run('failed',1),/already exists/);}
  assert.equal((await wf.run('next',1)).status,'COMPLETED');
 });
 

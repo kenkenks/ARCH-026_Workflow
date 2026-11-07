@@ -19,9 +19,8 @@ const port = Number(process.env.PORT || 3000);
 let runCounter = 0;
 let state;
 let runtime = null;
-function init(template=null) {
-  runtime = null;
-  activeTicketId = null;
+let pendingStart = null;
+function createState(template=null) {
   const store = new CMemoryHistoryStore();
   // Fixed/template previews are exclusively simulated; annotate the stored history.
   const save=store.save.bind(store);
@@ -35,8 +34,9 @@ function init(template=null) {
   const selectedSteps=template ? template.steps.map(s=>({no:s.no,job:new CDummyJob(s.name),nextStepNo:s.next})) : steps;
   const workflow = new CWorkflow(selectedSteps,store);
   const monitor = new CWorkflowMonitor(store);
-  state = {store, workflow, monitor, runId:`gui-${++runCounter}`, permits:[], waiting:[], running:false, done:false, error:null,template:template?{id:template.definition.id,version:template.definition.version,steps:template.steps}:null,startStepNo:template?.start??10};
+  return {store, workflow, monitor, runId:`gui-${++runCounter}`, permits:[], waiting:[], running:false, done:false, error:null,template:template?{id:template.definition.id,version:template.definition.version,steps:template.steps}:null,startStepNo:template?.start??10};
 }
+function init(template=null) {const next=createState(template);runtime=null;activeTicketId=null;state=next;}
 init();
 function gate(s) { return new Promise(resolve => { if (s.permits.length) {s.permits.shift(); resolve();} else s.waiting.push(resolve); }); }
 function step() {
@@ -44,7 +44,7 @@ function step() {
   if(s.done) return;
   if(!s.running){
     s.running=true;
-    s.workflow.run(s.runId,s.startStepNo,100,()=>gate(s)).then(()=>{s.done=true;}).catch(e=>{s.error=String(e);s.done=true;});
+    s.workflow.run(s.runId,s.startStepNo,100,()=>gate(s)).then(()=>{s.done=true;}).catch(()=>{s.error='Workflowの実行または履歴保存に失敗しました';s.done=true;});
   }
   const next=s.waiting.shift(); if(next) next(); else s.permits.push(true);
 }
@@ -55,11 +55,22 @@ async function snapshot() {
     const steps=runtime.definition.steps.map((x,i)=>({id:x.id,no:(i+1)*10,name:x.type==='JOB'?(jobs.list().find(j=>j.keyword===x.jobId)?.displayName||x.jobId):x.type,type:x.type,jobId:x.jobId}));
     const history=r.history.map(h=>{const step=steps.find(x=>x.id===h.stepId);const c=counts.get(h.stepId)||{stepNo:step?.no,executions:0,lastResult:''};c.executions++;c.lastResult=h.result;counts.set(h.stepId,c);return {...h,stepNo:step?.no,job:step?.name,nextStepNo:steps.find(x=>x.id===h.nextStepId)?.no??null};});
     const current=runtime.steps.get(r.currentStepId);const jobForm=r.executionMode==='NORMAL'&&current?.type==='JOB'?examJobs.describe(current.jobId,state.runId,current.id,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass):null;
-    return {executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed,jobForm,activeTicketId,runId:state.runId,status:r.status,currentStepNo:steps.find(x=>x.id===r.currentStepId)?.no??null,history,summary:[...counts.values()],error:state.error,done:['COMPLETED','FAILED'].includes(r.status),pending:r.pending,template:{id:r.definitionId,version:r.definitionVersion,steps},runtime:true};
+    return {startIssue:pendingStart?{...pendingStart}:null,startDiagnostic:state.startDiagnostic?{...state.startDiagnostic}:null,diagnostic:r.error,executionMode:r.executionMode,resultKind:r.resultKind,simulatedJobUsed:r.simulatedJobUsed,jobForm,activeTicketId,runId:state.runId,status:r.status,currentStepNo:steps.find(x=>x.id===r.currentStepId)?.no??null,history,summary:[...counts.values()],error:pendingStart?.summary||r.error?.summary||state.error,done:['COMPLETED','FAILED'].includes(r.status),pending:r.pending,template:{id:r.definitionId,version:r.definitionVersion,steps},runtime:true};
   }
   const s=state;
   const data=await s.monitor.get(s.runId);
-  return {executionMode:'DEMO',resultKind:data?.resultKind||'READY',simulatedJobUsed:data?.simulatedJobUsed||false,activeTicketId,runId:s.runId, status:data?.status || 'READY', currentStepNo:data?.currentStepNo ?? (data?'END':s.startStepNo), history:data?.history || [], summary:await s.monitor.summary(s.runId), error:s.error, done:s.done,template:s.template};
+  return {startIssue:pendingStart?{...pendingStart}:null,executionMode:'DEMO',resultKind:data?.resultKind||'READY',simulatedJobUsed:data?.simulatedJobUsed||false,activeTicketId,runId:s.runId, status:data?.status || 'READY', currentStepNo:data?.currentStepNo ?? (data?'END':s.startStepNo), history:data?.history || [], summary:await s.monitor.summary(s.runId), error:pendingStart?.summary||s.error, done:s.done,template:s.template};
+}
+function httpFailure(value){
+  const internal=()=>({status:500,body:{error:'内部処理で例外が発生しました',code:'INTERNAL'}});
+  try {
+  // Do not read arbitrary properties or stringify unknown thrown values.
+  if(!(value instanceof Error))return internal();
+  const safeCodes={RUNTIME_BUSY:'同一Runtimeの工程を実行中です',EXECUTION_CHANGED:'実行対象が変更されました',TICKET_START_FAILED:'Ticketの紐付けを確認できませんでした',TICKET_START_OUTCOME_UNKNOWN:'Ticketの開始結果が不明です。状態確認が必要です'};
+  if(Object.hasOwn(safeCodes,value.code))return {status:value.code==='TICKET_START_OUTCOME_UNKNOWN'?503:value.code==='TICKET_START_FAILED'?500:409,body:{error:safeCodes[value.code],code:value.code}};
+  if([400,401,403,404,409,413,415].includes(value.status))return {status:value.status,body:{error:value.message}};
+  return {status:value.status===503?503:500,body:{error:'内部処理で例外が発生しました',code:'INTERNAL'}};
+  }catch{return internal();}
 }
 function send(res,code,body,type='application/json; charset=utf-8') {res.writeHead(code,{'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(type.startsWith('application/json')?JSON.stringify(body):body);}
 async function readBody(req){let body='';for await(const chunk of req){body+=chunk;if(body.length>65536)throw Error('Request too large');}return JSON.parse(body||'{}');}
@@ -68,12 +79,15 @@ const server=http.createServer(async(req,res)=>{
   // silently switch to whichever execution happens to be global later.
   const targetRuntime=runtime,targetState=state,targetRunId=state.runId,targetTicketId=activeTicketId;
   const targetStepId=targetRuntime?.currentStepId;
+  const priorDiagnostic=targetRuntime?.error;
   const requireTarget=()=>{
+    if(pendingStart)throw Object.assign(Error('開始結果が不明です'),{code:'TICKET_START_OUTCOME_UNKNOWN'});
     if(runtime!==targetRuntime||state!==targetState||state.runId!==targetRunId||activeTicketId!==targetTicketId)
       throw Object.assign(Error('実行対象が変更されました'),{code:'EXECUTION_CHANGED',status:409});
   };
   try {
     const url=new URL(req.url,`http://localhost:${port}`);
+    if(pendingStart&&req.method!=='GET')throw Object.assign(Error('開始結果が不明です'),{code:'TICKET_START_OUTCOME_UNKNOWN'});
     if(req.method==='GET' && url.pathname==='/') return send(res,200,fs.readFileSync(path.join(__dirname,'index.html'),'utf8'),'text/html; charset=utf-8');
     if(req.method==='GET' && url.pathname==='/api/job-classes') return send(res,200,[...ALLOWED_CLASSES]);
     if(req.method==='GET' && url.pathname==='/api/jobs') return send(res,200,jobs.list());
@@ -92,6 +106,7 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='GET' && url.pathname.startsWith('/api/tickets/')) {const id=decodeURIComponent(url.pathname.slice(13));const t=tickets.get(id);return send(res,t?200:404,t||{error:'Not found'});}
     if(req.method==='POST' && url.pathname==='/api/ticket-action') {
       const {ticketId,action,patch,definitionId,definitionVersion,executionMode='NORMAL'}=await readBody(req);let t;
+      if(pendingStart)throw Object.assign(Error('開始結果が不明です'),{code:'TICKET_START_OUTCOME_UNKNOWN'});
       if(action==='edit')t=tickets.edit(ticketId,patch||{});
       else if(action==='submit')t=tickets.submit(ticketId);
       else if(action==='cancel')t=tickets.cancel(ticketId);
@@ -121,11 +136,27 @@ const server=http.createServer(async(req,res)=>{
             handlers[s.jobId]=handler;
           }
         }
-        const nextRuntime=new WorkflowRuntime(def,handlers,{executionMode,simulatedJobIds});
-        init();state.runId=runId;runtime=nextRuntime;
-        // A demo preview never attaches or completes a business Ticket.
-        if(executionMode==='NORMAL'){t=tickets.attachWorkflow(ticketId,def.id,def.version,runId);activeTicketId=ticketId;}
-        else {activeTicketId=null;t={...ticket,executionMode};}
+        const nextRuntime=new WorkflowRuntime(def,handlers,{executionMode,simulatedJobIds,runId});
+        const nextState=createState();nextState.runId=runId;
+        // Initialize candidates privately. Publish only after the binding is observed.
+        if(executionMode==='NORMAL'){
+          let attachmentError,threw=false,observed;
+          try{tickets.attachWorkflow(ticketId,def.id,def.version,runId);}catch(error){attachmentError=error;threw=true;}
+          const unknown=(reconciliationCause)=>{
+            pendingStart={code:'TICKET_START_OUTCOME_UNKNOWN',summary:'Ticketの開始結果が不明です。状態確認が必要です',ticketId,runId,definitionId:def.id,definitionVersion:def.version,executionMode};
+            return Object.assign(new Error(pendingStart.summary,{cause:threw?attachmentError:reconciliationCause}),{code:pendingStart.code,reconciliationCause});
+          };
+          try{observed=tickets.get(ticketId);}catch(error){throw unknown(error);}
+          const matches=observed?.ticketId===ticketId&&observed.status==='IN_PROGRESS'&&observed.executionId===runId&&observed.workflowId===def.id&&observed.workflowVersion===def.version;
+          if(!matches){
+            const unchanged=observed&&['ticketId','status','executionId','workflowId','workflowVersion'].every(key=>observed[key]===ticket[key]);
+            if(threw&&unchanged)throw Object.assign(new Error('Ticketの紐付け前に失敗しました',{cause:attachmentError}),{code:'TICKET_START_FAILED'});
+            throw unknown();
+          }
+          t=observed;
+          if(threw){nextState.startDiagnostic={code:'TICKET_START_RECONCILED',summary:'紐付け処理で例外が発生しましたが、Ticketの紐付け状態を照合しました',runId,ticketId,executionMode};t={...observed,startReconciliation:'MATCHED_AFTER_EXCEPTION'};}
+        }else t={...ticket,executionMode}; // Demo never attaches a business Ticket.
+        state=nextState;runtime=nextRuntime;activeTicketId=executionMode==='NORMAL'?ticketId:null;
       } else return send(res,400,{error:'Unknown action'});
       return send(res,200,t);
     }
@@ -154,7 +185,11 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='POST' && url.pathname==='/api/reset') {if(runtime && !['COMPLETED','FAILED'].includes(runtime.status))return send(res,409,{error:'実行中のひな型はリセットできません'});if(activeTicketId && tickets.get(activeTicketId)?.status==='IN_PROGRESS') return send(res,409,{error:'チケット実行中はリセットできません。'});if(state.running && !state.done) return send(res,409,{error:'実行中はリセットできません。完了後にリセットしてください。'});init();return send(res,200,{ok:true});}
     send(res,404,{error:'Not found'});
-  } catch(e){send(res,e.status||500,{error:e.message||String(e),code:e.code,details:e.details});}
+  } catch(e){
+    const response=httpFailure(e);
+    if(targetRuntime?.error&&targetRuntime.error!==priorDiagnostic)response.body={error:targetRuntime.error.summary,code:targetRuntime.error.code,diagnostic:{...targetRuntime.error}};
+    send(res,response.status,response.body);
+  }
 });
 if(require.main===module)server.listen(port,'127.0.0.1',()=>console.log(`ARCH-026 GUI: http://127.0.0.1:${server.address().port}`));
 module.exports={server};

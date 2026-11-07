@@ -37,3 +37,16 @@ test('duplicate run ID rejected', async () => {
   const {workflow} = setup([true]); await workflow.run('x',10);
   await assert.rejects(workflow.run('x',10),/already exists/);
 });
+
+test('CDummyJob awaits async callback success and rejection under CJob contract', async () => {
+  let enter!: () => void, release!: () => void;
+  const entered = new Promise<void>(resolve => { enter=resolve; });
+  const gate = new Promise<void>(resolve => { release=resolve; });
+  const store = new CMemoryHistoryStore();
+  const wf = new CWorkflow([{no:1,job:new CDummyJob('async',async()=>{enter();await gate;})}],store);
+  const running=wf.run('async-success',1);await entered;
+  assert.equal(store.load('async-success')?.status,'RUNNING');assert.equal(store.load('async-success')?.history.length,0);
+  release();assert.equal((await running).status,'COMPLETED');
+  const fail=new CWorkflow([{no:1,job:new CDummyJob('reject',async()=>{throw Error('callback reject');})}],new CMemoryHistoryStore());
+  const result=await fail.run('async-failure',1);assert.equal(result.status,'FAILED');assert.equal(result.history[0].result,'ERROR');assert.match(result.history[0].error,/callback reject/);
+});

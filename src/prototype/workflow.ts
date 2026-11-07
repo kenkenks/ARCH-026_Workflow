@@ -7,8 +7,9 @@ export abstract class CJob {
   abstract execute(): Promise<void>;
 }
 export class CDummyJob extends CJob {
-  constructor(name: string, private readonly action: () => void = () => {}) { super(name); }
-  async execute(): Promise<void> { this.action(); }
+  /** Synchronous and asynchronous callbacks both complete before the Job completes. */
+  constructor(name: string, private readonly action: () => void | Promise<void> = () => {}) { super(name); }
+  async execute(): Promise<void> { await this.action(); }
 }
 export class CCheckJob extends CJob {
   constructor(name: string, private readonly condition: IBool,
@@ -35,12 +36,24 @@ export interface TraceEntry {
 export interface RunSnapshot {
   runId: string; currentStepNo: StepNo | null; status: TraceStatus | 'RUNNING';
   history: readonly TraceEntry[];
+  failure?: {code:'BEFORE_STEP_FAILED'; stepNo:StepNo; summary:string};
+}
+/** Local diagnostic error. Causes/snapshots must not be blindly serialized to HTTP. */
+export class WorkflowRunError extends Error {
+  readonly code: 'BEFORE_STEP_FAILED' | 'HISTORY_SAVE_OUTCOME_UNKNOWN';
+  readonly outcome: 'FAILED' | 'UNKNOWN';
+  constructor(code: WorkflowRunError['code'], public readonly attemptedSnapshot: RunSnapshot,
+    cause: unknown, public readonly storageCause?: unknown,
+    public readonly observation?: {state:'AVAILABLE'|'ABSENT'|'UNAVAILABLE'; snapshot?:RunSnapshot}) {
+    super(code === 'BEFORE_STEP_FAILED' ? 'Workflow beforeStep failed' : 'History save outcome is unknown', {cause});
+    this.name='WorkflowRunError';this.code=code;this.outcome=code==='BEFORE_STEP_FAILED'?'FAILED':'UNKNOWN';
+  }
 }
 export interface IWorkflowHistoryStore { save(snapshot: RunSnapshot): void | Promise<void>; load(runId: string): RunSnapshot | undefined | Promise<RunSnapshot | undefined>; }
 export class CMemoryHistoryStore implements IWorkflowHistoryStore {
   private snapshots = new Map<string, RunSnapshot>();
   save(snapshot: RunSnapshot): void {
-    this.snapshots.set(snapshot.runId, {...snapshot, history: snapshot.history.map(e => ({...e}))});
+    this.snapshots.set(snapshot.runId, {...snapshot, ...(snapshot.failure?{failure:{...snapshot.failure}}:{}), history: snapshot.history.map(e => ({...e}))});
   }
   load(runId: string): RunSnapshot | undefined { return this.snapshots.get(runId); }
 }
@@ -79,10 +92,28 @@ export class CWorkflow {
     if (await this.store.load(runId)) throw new Error(`Run ID already exists: ${runId}`);
     let current: StepNo | null = startStepNo;
     const history: TraceEntry[] = [];
-    const snapshot = (status: RunSnapshot['status']): RunSnapshot => ({runId, currentStepNo: current, status, history: [...history]});
-    await this.store.save(snapshot('RUNNING'));
+    let failure: RunSnapshot['failure'];
+    const snapshot = (status: RunSnapshot['status']): RunSnapshot => ({runId, currentStepNo: current, status, history: [...history], ...(failure?{failure:{...failure}}:{})});
+    const persist = async (value: RunSnapshot, primary?: {cause:unknown}): Promise<void> => {
+      try { await this.store.save(value); }
+      catch (storageCause) {
+        let observation: NonNullable<WorkflowRunError['observation']>;
+        try { const stored=await this.store.load(runId); observation=stored?{state:'AVAILABLE',snapshot:structuredClone(stored)}:{state:'ABSENT'}; }
+        catch { observation={state:'UNAVAILABLE'}; }
+        // Read-back observes state; even a match does not prove that save succeeded.
+        throw new WorkflowRunError('HISTORY_SAVE_OUTCOME_UNKNOWN',value,primary?primary.cause:storageCause,storageCause,observation);
+      }
+    };
+    await persist(snapshot('RUNNING'));
     while (current !== null && history.length < maxExecutions) {
-      if (beforeStep) await beforeStep();
+      if (beforeStep) {
+        try { await beforeStep(); }
+        catch (cause) {
+          failure={code:'BEFORE_STEP_FAILED',stepNo:current,summary:'beforeStepで例外が発生しました'};
+          const failed=snapshot('FAILED');await persist(failed,{cause});
+          throw new WorkflowRunError('BEFORE_STEP_FAILED',failed,cause);
+        }
+      }
       const step: Step = this.steps.get(current)!;
       let next: StepNo | null = null;
       let result: TraceEntry['result'] = 'DONE';
@@ -94,15 +125,15 @@ export class CWorkflow {
       } catch (e) {
         history.push({order: history.length + 1, stepNo: current, job: step.job.name, result: 'ERROR',
           nextStepNo: null, at: new Date().toISOString(), error: String(e)});
-        await this.store.save(snapshot('FAILED')); return snapshot('FAILED');
+        await persist(snapshot('FAILED'),{cause:e}); return snapshot('FAILED');
       }
       history.push({order: history.length + 1, stepNo: current, job: step.job.name, result,
         nextStepNo: next, at: new Date().toISOString()});
       current = next;
-      await this.store.save(snapshot(current === null ? 'COMPLETED' : 'RUNNING'));
+      await persist(snapshot(current === null ? 'COMPLETED' : 'RUNNING'));
     }
     const final = snapshot(current === null ? 'COMPLETED' : 'LIMIT_REACHED');
-    await this.store.save(final); return final;
+    await persist(final); return final;
     } finally {
       reserved.delete(runId); this.running = false;
       if (!reserved.size) activeRuns.delete(this.store);
