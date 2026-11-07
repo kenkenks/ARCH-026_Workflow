@@ -1,5 +1,6 @@
 'use strict';
 const http = require('node:http');
+const {readBody,validateRequest}=require('./http-input');
 const fs = require('node:fs');
 const path = require('node:path');
 const { CWorkflow, CDummyJob, CCheckJob, CSequenceBool, CMemoryHistoryStore, CWorkflowMonitor } = require('../dist/src/prototype/workflow.js');
@@ -82,7 +83,6 @@ function completionResponse(value){
  const status=value.result==='CONFIRMED'?200:value.result==='CONFLICT'?409:503;
  return {status,body:{ok:status===200,ticketCompletion:value,...(status===200?{}:{code:value.code,error:value.result==='CONFLICT'?'Ticketの完了情報が競合しています':'Ticketの完了更新が未確認です。専用APIで再確認してください'})}};
 }
-async function readBody(req){let body='';for await(const chunk of req){body+=chunk;if(body.length>65536)throw Error('Request too large');}return JSON.parse(body||'{}');}
 const server=http.createServer(async(req,res)=>{
   // Capture before reading an asynchronous request body. A delayed request must not
   // silently switch to whichever execution happens to be global later.
@@ -97,15 +97,16 @@ const server=http.createServer(async(req,res)=>{
   };
   try {
     const url=new URL(req.url,`http://localhost:${port}`);
+    const readInput=async()=>validateRequest(url.pathname,await readBody(req),targetRuntime?.steps.get(targetStepId));
     if(pendingStart&&req.method!=='GET')throw Object.assign(Error('開始結果が不明です'),{code:'TICKET_START_OUTCOME_UNKNOWN'});
     if(completion?.inProgress&&req.method!=='GET'&&url.pathname!=='/api/ticket-completion/reconcile')requireCompletionClear();
     if(req.method==='GET' && url.pathname==='/') return send(res,200,fs.readFileSync(path.join(__dirname,'index.html'),'utf8'),'text/html; charset=utf-8');
     if(req.method==='GET' && url.pathname==='/api/job-classes') return send(res,200,[...ALLOWED_CLASSES]);
     if(req.method==='GET' && url.pathname==='/api/jobs') return send(res,200,jobs.list());
-    if(req.method==='POST' && url.pathname==='/api/jobs') return send(res,200,jobs.save(await readBody(req)));
+    if(req.method==='POST' && url.pathname==='/api/jobs') return send(res,200,jobs.save(await readInput()));
     if(req.method==='GET' && url.pathname==='/api/definitions') return send(res,200,definitions.list());
-    if(req.method==='POST' && url.pathname==='/api/definitions/validate') {const def=await readBody(req);const errors=validate(def);return send(res,200,{valid:!errors.length,errors});}
-    if(req.method==='POST' && url.pathname==='/api/definitions') {const def=await readBody(req);if(tickets.list().some(t=>t.workflowId===def.id&&t.workflowVersion===def.version))return send(res,409,{error:'実行に使用されたひな型Versionは変更できません'});return send(res,200,definitions.save(def,{overwrite:url.searchParams.get('overwrite')==='true'}));}
+    if(req.method==='POST' && url.pathname==='/api/definitions/validate') {const def=await readInput();const errors=validate(def);return send(res,200,{valid:!errors.length,errors});}
+    if(req.method==='POST' && url.pathname==='/api/definitions') {const def=await readInput();if(tickets.list().some(t=>t.workflowId===def.id&&t.workflowVersion===def.version))return send(res,409,{error:'実行に使用されたひな型Versionは変更できません'});return send(res,200,definitions.save(def,{overwrite:url.searchParams.get('overwrite')==='true'}));}
     if(url.pathname==='/api/definition' && ['GET','DELETE'].includes(req.method)) {
       const id=url.searchParams.get('id'),version=url.searchParams.get('version');
       if(!id||!version)return send(res,400,{error:'id と version が必要です'});
@@ -113,10 +114,10 @@ const server=http.createServer(async(req,res)=>{
       if(tickets.list().some(t=>t.workflowId===id&&t.workflowVersion===version))return send(res,409,{error:'実行に使用されたひな型Versionは削除できません'});return send(res,definitions.remove(id,version)?200:404,{ok:true});
     }
     if(req.method==='GET' && url.pathname==='/api/tickets') return send(res,200,tickets.list());
-    if(req.method==='POST' && url.pathname==='/api/tickets') {const input=await readBody(req);const t=tickets.create(input);return send(res,201,t);}
+    if(req.method==='POST' && url.pathname==='/api/tickets') {const input=await readInput();const t=tickets.create(input);return send(res,201,t);}
     if(req.method==='GET' && url.pathname.startsWith('/api/tickets/')) {const id=decodeURIComponent(url.pathname.slice(13));const t=tickets.get(id);return send(res,t?200:404,t||{error:'Not found'});}
     if(req.method==='POST' && url.pathname==='/api/ticket-action') {
-      const {ticketId,action,patch,definitionId,definitionVersion,executionMode='NORMAL'}=await readBody(req);let t;
+      const {ticketId,action,patch,definitionId,definitionVersion,executionMode='NORMAL'}=await readInput();let t;
       if(pendingStart)throw Object.assign(Error('開始結果が不明です'),{code:'TICKET_START_OUTCOME_UNKNOWN'});
       if(completion?.inProgress)requireCompletionClear();
       if(action==='edit')t=tickets.edit(ticketId,patch||{});
@@ -178,7 +179,7 @@ const server=http.createServer(async(req,res)=>{
       if(!targetRuntime||!targetTicketId)return send(res,409,{error:'実行中のJOBがありません'});
       const current=targetRuntime.steps.get(targetStepId);
       if(!current||current.type!=='JOB'||!examJobs.resolve(current.jobId,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass))return send(res,409,{error:'業務入力を受け付ける工程ではありません'});
-      const body=await readBody(req);
+      const body=await readInput();
       requireTarget();
       if(targetRuntime.currentStepId!==targetStepId||targetRuntime.advancing||['COMPLETED','FAILED'].includes(targetRuntime.status))return send(res,409,{error:'実行工程が変更されたか処理中です'});
       const record=examJobs.submit(current.jobId,targetRunId,current.id,body.values,jobs.list().find(j=>j.keyword===current.jobId)?.jobClass);
@@ -186,15 +187,16 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==='GET' && url.pathname==='/api/state') return send(res,200,await snapshot());
     if(req.method==='POST' && url.pathname==='/api/ticket-completion/reconcile'){
-      const body=await readBody(req);requireTarget();
+      const body=await readInput();requireTarget();
       if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==2||!['ticketId','runId'].every(key=>typeof body[key]==='string'&&body[key].trim()))return send(res,400,{error:'ticketIdとrunIdを指定してください'});
       if(!targetCompletion||body.ticketId!==targetTicketId||body.runId!==targetRunId)return send(res,409,{error:'完了調整の対象実行が一致しません',code:'TICKET_COMPLETION_TARGET_MISMATCH'});
       const result=await targetCompletion.reconcile(body.ticketId,body.runId);requireTarget();
       const response=completionResponse(result);return send(res,response.status,response.body);
     }
     if(req.method==='POST' && url.pathname==='/api/step') {
+      const body=await readInput();
+      requireTarget();
       if(targetRuntime){
-        const body=await readBody(req);
         requireTarget();
         if(targetRuntime.currentStepId!==targetStepId)throw Object.assign(Error('実行工程が変更されました'),{code:'EXECUTION_CHANGED',status:409});
         const r=await targetRuntime.advance({checkResult:body.checkResult});
