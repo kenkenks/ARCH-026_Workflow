@@ -38,6 +38,11 @@ export interface RunSnapshot {
   history: readonly TraceEntry[];
   failure?: {code:'BEFORE_STEP_FAILED'; stepNo:StepNo; summary:string};
 }
+/** Copy the current snapshot DTO: TraceEntry and failure contain scalar fields. */
+function copySnapshot(snapshot: RunSnapshot): RunSnapshot {
+  return {...snapshot, history:snapshot.history.map(entry => ({...entry})),
+    ...(snapshot.failure ? {failure:{...snapshot.failure}} : {})};
+}
 /** Local diagnostic error. Causes/snapshots must not be blindly serialized to HTTP. */
 export class WorkflowRunError extends Error {
   readonly code: 'BEFORE_STEP_FAILED' | 'HISTORY_SAVE_OUTCOME_UNKNOWN';
@@ -53,9 +58,12 @@ export interface IWorkflowHistoryStore { save(snapshot: RunSnapshot): void | Pro
 export class CMemoryHistoryStore implements IWorkflowHistoryStore {
   private snapshots = new Map<string, RunSnapshot>();
   save(snapshot: RunSnapshot): void {
-    this.snapshots.set(snapshot.runId, {...snapshot, ...(snapshot.failure?{failure:{...snapshot.failure}}:{}), history: snapshot.history.map(e => ({...e}))});
+    this.snapshots.set(snapshot.runId, copySnapshot(snapshot));
   }
-  load(runId: string): RunSnapshot | undefined { return this.snapshots.get(runId); }
+  load(runId: string): RunSnapshot | undefined {
+    const snapshot=this.snapshots.get(runId);
+    return snapshot ? copySnapshot(snapshot) : undefined;
+  }
 }
 // Process-local reservations; the public history Store contract remains unchanged.
 const activeRuns = new WeakMap<IWorkflowHistoryStore, Set<string>>();
@@ -93,9 +101,10 @@ export class CWorkflow {
     let current: StepNo | null = startStepNo;
     const history: TraceEntry[] = [];
     let failure: RunSnapshot['failure'];
-    const snapshot = (status: RunSnapshot['status']): RunSnapshot => ({runId, currentStepNo: current, status, history: [...history], ...(failure?{failure:{...failure}}:{})});
+    const snapshot = (status: RunSnapshot['status']): RunSnapshot => copySnapshot({runId, currentStepNo: current, status, history, ...(failure?{failure}:{})});
     const persist = async (value: RunSnapshot, primary?: {cause:unknown}): Promise<void> => {
-      try { await this.store.save(value); }
+      // A Store may retain its input. Keep Core-owned results/diagnostics separate.
+      try { await this.store.save(copySnapshot(value)); }
       catch (storageCause) {
         let observation: NonNullable<WorkflowRunError['observation']>;
         try { const stored=await this.store.load(runId); observation=stored?{state:'AVAILABLE',snapshot:structuredClone(stored)}:{state:'ABSENT'}; }

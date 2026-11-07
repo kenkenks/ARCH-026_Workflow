@@ -95,3 +95,14 @@
 保証は同一Hostプロセスの協調するGUI API要求まで。Ticket Repositoryは同期・CASなしであり、直接Repositoryを書き換える処理や別プロセスとの競合まで原子性を保証しない。調整中のPromise待機はテスト用の境界注入でも検証するが、非同期Ticket永続化Adapterを正式導入したものではない。Runtime・Ticket・技術状態はメモリのみで、再起動後の復元・回復は対象外。通知やTicket完了履歴も追加しない。
 
 試験は `tests/ticket-completion.test.cjs`、`tests/gui-ticket-completion.test.cjs`。保存前後の例外、読戻し不能、状態/識別情報不一致、重複調整、開始/resetとの競合、Job/履歴/保存回数/updatedAtの不変性を隔離環境で検証する。
+
+## P2-3：履歴と業務Job記録の参照独立性
+
+- Memory History Storeはsave/loadの双方でsnapshotをコピーする。対象はroot、history配列、各TraceEntry、任意のfailure。現行TraceEntry/failureの値は文字列・数値・null等であるため、既知の構造だけを複製する。汎用deep-copy、JSON変換、freezeは追加しない。
+- 取得値の編集はその呼出元だけに適用される。複数load結果や別runIdの値へ伝わらない。変更を保存するには従来どおり明示的saveが必要。存在しないrunIdのloadはundefinedを維持する。Monitor.getはStoreのコピーを利用し、コピーを重複追加しない。
+- CWorkflowのsnapshotはCore内のTraceEntryから独立する。Storeへ渡す値も、Coreが返却結果や例外診断として保持する値と分離する。Storeが入力snapshotを保持・変更しても、過去snapshotから後続履歴や最終結果を変更できない。Store自身が意図的に壊した保存内容を修復する保証ではない。
+- 業務Jobのsubmit/describeはrecordとvaluesを個別にコピーして返す。valuesは既存の入力正規化で生成した文字列辞書。保存済み入力、別呼出元の返却値、別runId/stepIdへ変更を波及させない。入力検証・HandlerのWAITING/COMPLETED判定・記録の保存形式は変更しない。
+- コピー範囲は現行Schemaに限定する。将来TraceEntryや診断へ任意のネスト値を追加する場合は、Schemaとコピー境界を合わせて検討する。Job/Checkインスタンスや例外causeを無条件に複製しない。
+- 対象外として、構築時のStep参照とCSequenceBool入力配列の共有は残る（後続実行へ影響し得る別課題）。Ticket型外入力ValidationはP2-4。Ticket Repository、Workflow Definition、GUI Runtime、Ticket完了調整、JSON/SQLite Adapter、Migrationは変更しない。
+
+`tests/reference-independence.test.cjs`でsave元・load結果・配列要素・failure・Monitor・runId間・snapshotを保持/変更するStore・submit/describeのrecord/valuesを検証する。FALSE→FALSE→TRUE→ENDや既存例外・並行実行の契約も維持する。

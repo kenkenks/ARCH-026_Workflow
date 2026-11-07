@@ -1,10 +1,12 @@
 'use strict';
+// Business record values are normalized strings; copy their known DTO structure.
+function copyRecord(record){return record?{...record,values:{...record.values}}:null;}
 /** Each business JOB owns its input schema, validation and volatile records. */
 class CExamBusinessJob {
   constructor(){this.records=new Map();}
   get fields(){return [];}
   key(runId,stepId){return JSON.stringify([runId,stepId]);}
-  describe(keyword,runId,stepId){return {keyword,fields:this.fields,record:this.records.get(this.key(runId,stepId))||null};}
+  describe(keyword,runId,stepId){return {keyword,fields:this.fields,record:copyRecord(this.records.get(this.key(runId,stepId)))};}
   submit(keyword,runId,stepId,input){
     if(!input||typeof input!=='object'||Array.isArray(input))throw Object.assign(new Error('入力が不正です'),{status:400});
     const values={};
@@ -18,7 +20,7 @@ class CExamBusinessJob {
       values[f.key]=value;
     }
     const record={values,completedAt:new Date().toISOString(),keyword};
-    this.records.set(this.key(runId,stepId),record);return record;
+    this.records.set(this.key(runId,stepId),record);return copyRecord(record);
   }
   handler(runId){return async ({stepId})=>({status:this.records.has(this.key(runId,stepId))?'COMPLETED':'WAITING'});}
 }
