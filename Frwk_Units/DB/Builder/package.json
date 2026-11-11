@@ -1,0 +1,19 @@
+{
+  "name": "@arch026/db-builder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tests/verify-portable-data-definition-core.mjs tests/verify-portable-data-definition-builder.mjs tests/verify-portable-data-definition-firestore-mapping.mjs"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "exports": {
+    "./definition": "./src/portable-data-definition-core.mjs",
+    "./builder": "./src/portable-data-definition-builder.mjs",
+    "./firestore": "./src/Schema_Renderer_Firestore.js",
+    "./src/Schema_Renderer_Firestore": "./src/Schema_Renderer_Firestore.js",
+    "./*": "./*"
+  }
+}

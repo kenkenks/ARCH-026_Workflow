@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "prototype-workflow/1",
+  "definitionId": "demo-exam-application",
+  "definitionVersion": "2",
+  "startStepId": "application.accept",
+  "steps": [
+    {"stepId":"application.accept","stepNo":10,"kind":"JOB","jobId":"application.accept","nextStepId":"teacher.decision"},
+    {"stepId":"teacher.decision","stepNo":20,"kind":"JOB","jobId":"teacher.decision","nextStepId":"teacher.branch"},
+    {"stepId":"teacher.branch","stepNo":30,"kind":"CHECK_BOOL","checkId":"teacher.approved","trueStepId":"exam.confirm","falseStepId":"application.review"},
+    {"stepId":"exam.confirm","stepNo":40,"kind":"JOB","jobId":"exam.confirm","nextStepId":"result.register"},
+    {"stepId":"result.register","stepNo":50,"kind":"JOB","jobId":"result.register","nextStepId":"application.finish"},
+    {"stepId":"application.finish","stepNo":60,"kind":"JOB","jobId":"application.finish"},
+    {"stepId":"application.review","stepNo":90,"kind":"JOB","jobId":"application.review","nextStepId":"application.resubmit"},
+    {"stepId":"application.resubmit","stepNo":95,"kind":"JOB","jobId":"application.resubmit","nextStepId":"teacher.decision"}
+  ]
+}

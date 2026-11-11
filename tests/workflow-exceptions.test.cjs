@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {WorkflowRuntime}=require('../gui/workflow-runtime');
-const {CWorkflow,CJob,CDummyJob,CMemoryHistoryStore,WorkflowRunError}=require('../dist/src/prototype/workflow');
+const {CWorkflow,CWorkflowTask,CDummyJob,CMemoryHistoryStore,WorkflowRunError}=require('../dist/src/prototype/workflow');
 const def={id:'exception',version:'1',startStepId:'J',eventRoutes:[],steps:[{id:'J',type:'JOB',jobId:'job',nextStepId:'END'},{id:'END',type:'END'}]};
 const secret='TEST_PRIVATE_VALUE C:\\private\\test-path';
 for(const [name,value] of [['Error',Error(secret)],['null',null],['string',secret],['number',12345],['object',{secret,stack:secret}],['unstringifiable',{toString(){throw Error(secret);}}]]){
@@ -61,7 +61,7 @@ for(const after of [false,true])for(const failAt of [1,2,3])test(`history save $
 for(const after of [false,true])test(`Handler fault plus FAILED save fault (${after?'after':'before'} write) preserves both causes`,async()=>{
  const root=Error('handler root'),storage=Error('storage secondary');const store=new CMemoryHistoryStore(),save=store.save.bind(store);
  store.save=s=>{if(s.status==='FAILED'){if(after)save(s);throw storage;}save(s);};
- class Job extends CJob{async execute(){throw root;}}
+ class Job extends CWorkflowTask{async execute(){throw root;}}
  const wf=new CWorkflow([{no:1,job:new Job('fail')}],store);
  await assert.rejects(wf.run('double',1),e=>{assert.equal(e.code,'HISTORY_SAVE_OUTCOME_UNKNOWN');assert.equal(e.cause,root);assert.equal(e.storageCause,storage);assert.equal(e.attemptedSnapshot.status,'FAILED');assert.equal(e.attemptedSnapshot.history[0].result,'ERROR');assert.match(e.attemptedSnapshot.history[0].error,/handler root/);return true;});
  assert.equal(store.load('double').status,after?'FAILED':'RUNNING');await assert.rejects(wf.run('double',1),/already exists/);

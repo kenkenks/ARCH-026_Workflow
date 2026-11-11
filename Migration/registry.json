@@ -1,0 +1,754 @@
+{
+  "schemaVersion": 1,
+  "repositories": {
+    "dojo-legacy": {
+      "root": "../clasp_道場サポ"
+    },
+    "framework": {
+      "root": "."
+    }
+  },
+  "discoveryRoots": [
+    "Frwk_Units/DB/Builder/src",
+    "Frwk_Units/Core/src",
+    "Frwk_Units/Member/src",
+    "Frwk_Units/Member/schema",
+    "Frwk_Units/TimeTrip/src",
+    "Frwk_Units/Workflow/src"
+  ],
+  "verifications": [
+    {
+      "id": "db",
+      "kind": "node-test",
+      "persistent": true,
+      "tests": [
+        "Frwk_Units/DB/Builder/tests/verify-portable-data-definition-core.mjs",
+        "Frwk_Units/DB/Builder/tests/verify-portable-data-definition-builder.mjs",
+        "Frwk_Units/DB/Builder/tests/verify-portable-data-definition-firestore-mapping.mjs"
+      ],
+      "inputs": [
+        "Frwk_Units/DB/Builder/src",
+        "Frwk_Units/DB/Builder/package.json",
+        "Frwk_Units/DB/Builder/tests"
+      ],
+      "expectedTests": 7
+    },
+    {
+      "id": "core",
+      "kind": "node-test",
+      "persistent": true,
+      "tests": [
+        "Migration/tests/assets/core.test.cjs"
+      ],
+      "inputs": [
+        "Frwk_Units/Core/src",
+        "Frwk_Units/Core/package.json"
+      ],
+      "expectedTests": 3
+    },
+    {
+      "id": "member",
+      "kind": "node-test",
+      "persistent": true,
+      "tests": [
+        "Migration/tests/assets/member.test.cjs"
+      ],
+      "inputs": [
+        "Frwk_Units/Member/src",
+        "Frwk_Units/Member/package.json",
+        "Frwk_Units/Member/package-lock.json",
+        "Frwk_Units/Member/node_modules/@arch026/core",
+        "Frwk_Units/Core/src",
+        "Frwk_Units/Core/package.json"
+      ],
+      "expectedTests": 3
+    },
+    {
+      "id": "time",
+      "kind": "node-test",
+      "persistent": true,
+      "tests": [
+        "Migration/tests/assets/timetrip.test.cjs",
+        "Frwk_Units/TimeTrip/tests/timetrip.test.cjs"
+      ],
+      "inputs": [
+        "Frwk_Units/TimeTrip/src",
+        "Frwk_Units/TimeTrip/package.json",
+        "Frwk_Units/TimeTrip/package-lock.json",
+        "Frwk_Units/Core/src",
+        "Frwk_Units/Core/package.json",
+        "Frwk_Units/TimeTrip/tests",
+        "Frwk_Units/TimeTrip/docs",
+        "Frwk_Units/Workflow/src",
+        "Frwk_Units/Workflow/dist",
+        "Frwk_Units/Workflow/package.json"
+      ],
+      "expectedTests": 17,
+      "localBindings": [
+        {
+          "path": "Frwk_Units/TimeTrip/node_modules/@arch026/workflow",
+          "target": "Frwk_Units/Workflow"
+        },
+        {
+          "path": "Frwk_Units/TimeTrip/node_modules/@arch026/core",
+          "target": "Frwk_Units/Core"
+        }
+      ]
+    },
+    {
+      "id": "workflow",
+      "kind": "node-test",
+      "persistent": true,
+      "tests": [
+        "Frwk_Units/Workflow/tests/workflow.test.cjs"
+      ],
+      "inputs": [
+        "Frwk_Units/Workflow/src",
+        "Frwk_Units/Workflow/dist",
+        "Frwk_Units/Workflow/package.json",
+        "Frwk_Units/Workflow/tsconfig.json",
+        "Frwk_Units/Workflow/tools",
+        "Frwk_Units/Workflow/docs",
+        "src/prototype/workflow.ts",
+        "src/prototype/job-form.ts",
+        "src/prototype/definition.ts",
+        "Frwk_Units/Workflow/tests"
+      ],
+      "expectedTests": 20
+    },
+    {
+      "id": "public-api",
+      "kind": "node-test",
+      "persistent": true,
+      "expectedTests": 8,
+      "tests": [
+        "Migration/tests/public-api.test.cjs"
+      ],
+      "inputs": [
+        "Frwk_Units/Core/src",
+        "Frwk_Units/Core/package.json",
+        "Frwk_Units/Workflow/src",
+        "Frwk_Units/Workflow/package.json",
+        "Frwk_Units/TimeTrip/src",
+        "Frwk_Units/TimeTrip/package.json",
+        "Frwk_Units/DB/Builder/src",
+        "Frwk_Units/DB/Builder/package.json",
+        "Frwk_Units/Member/src",
+        "Frwk_Units/Member/package.json",
+        "Frwk_Units/Workflow/dist",
+        "Migration/tools/inspect-api.cjs",
+        "Migration/tests/public-api.test.cjs",
+        "node_modules/typescript/package.json",
+        "node_modules/typescript/lib/typescript.js"
+      ],
+      "localBindings": [
+        {
+          "path": "Frwk_Units/TimeTrip/node_modules/@arch026/workflow",
+          "target": "Frwk_Units/Workflow"
+        },
+        {
+          "path": "Frwk_Units/TimeTrip/node_modules/@arch026/core",
+          "target": "Frwk_Units/Core"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "db-core",
+      "repository": "dojo-legacy",
+      "source": "tools/portable-data-definition-core.mjs",
+      "destination": "Frwk_Units/DB/Builder/src/portable-data-definition-core.mjs",
+      "unit": "DB/Builder",
+      "sourceBaselineSha256": "9ea44062bd1f50c4e411e53e084111dec6b58193c4922a2026f7838a08bdd179",
+      "destinationVerifiedSha256": "9ea44062bd1f50c4e411e53e084111dec6b58193c4922a2026f7838a08bdd179",
+      "verifications": [
+        "db"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "db-builder",
+      "repository": "dojo-legacy",
+      "source": "tools/portable-data-definition-builder.mjs",
+      "destination": "Frwk_Units/DB/Builder/src/portable-data-definition-builder.mjs",
+      "unit": "DB/Builder",
+      "sourceBaselineSha256": "aebcbbfd0b1968a11de2895da57f88481046294289ce7f1fe0b3e62255dfcb88",
+      "destinationVerifiedSha256": "aebcbbfd0b1968a11de2895da57f88481046294289ce7f1fe0b3e62255dfcb88",
+      "verifications": [
+        "db"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "db-firestore-renderer",
+      "repository": "dojo-legacy",
+      "source": "shared/Schema_Renderer_Firestore.js",
+      "destination": "Frwk_Units/DB/Builder/src/Schema_Renderer_Firestore.js",
+      "unit": "DB/Builder",
+      "sourceBaselineSha256": "2a0248a4c583a1afff152e2af2e6530e96e5947b9a7896650f0d393f7a7affa1",
+      "destinationVerifiedSha256": "2a0248a4c583a1afff152e2af2e6530e96e5947b9a7896650f0d393f7a7affa1",
+      "verifications": [
+        "db"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "core-flow",
+      "repository": "dojo-legacy",
+      "source": "shared/Flow.js",
+      "destination": "Frwk_Units/Core/src/Flow.js",
+      "unit": "Core",
+      "sourceBaselineSha256": "10038575df090a95f245d29d72ad0dbffbd1843d36616debcf51f237f72a9c03",
+      "destinationVerifiedSha256": "10038575df090a95f245d29d72ad0dbffbd1843d36616debcf51f237f72a9c03",
+      "verifications": [
+        "core"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "core-storage-id",
+      "repository": "dojo-legacy",
+      "source": "shared/StorageId.js",
+      "destination": "Frwk_Units/Core/src/StorageId.js",
+      "unit": "Core",
+      "sourceBaselineSha256": "890425fba5bce9b24175879eb6641eaf3987d5da43e7c9c9eb911cccb0a73fc5",
+      "destinationVerifiedSha256": "890425fba5bce9b24175879eb6641eaf3987d5da43e7c9c9eb911cccb0a73fc5",
+      "verifications": [
+        "core"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "member-object",
+      "repository": "dojo-legacy",
+      "source": "shared/MemberObject.js",
+      "destination": "Frwk_Units/Member/src/MemberObject.js",
+      "unit": "Member",
+      "sourceBaselineSha256": "4f1cdd25d7a2cef6682ce623944def6c3a8e7f7e59dba4dc50fcf62f12b04bb2",
+      "destinationVerifiedSha256": "08551120e32f8d4562f1f5da1d5ccb283d045aa22b4bbad5b0cd223784e02bf5",
+      "verifications": [
+        "member"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "member-schema",
+      "repository": "dojo-legacy",
+      "source": "schema/Member.yml",
+      "destination": "Frwk_Units/Member/schema/Member.yml",
+      "unit": "Member",
+      "sourceBaselineSha256": "1011f03560c36a7283ce4f4a8d17bd45f9b81a5940b9573ebc0a6cc07eb119da",
+      "destinationVerifiedSha256": null,
+      "verifications": [],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Copied schema; existing minimal Member object tests do not verify this schema."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-context",
+      "repository": "dojo-legacy",
+      "source": "shared/SystemContext.js",
+      "destination": "Frwk_Units/TimeTrip/src/SystemContext.js",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": "89514046ca9474297a8ce504e623fabb88feb5eee324483575891477373a399c",
+      "destinationVerifiedSha256": "0610346a80e9d8c4b6d25ea46b3312bdcc17f2471d38f94513fef1711e598dfa",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-logic",
+      "repository": "dojo-legacy",
+      "source": "shared/TimeTravel.js",
+      "destination": "Frwk_Units/TimeTrip/src/TimeTripCore.js",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": "fe2266a6d85949eb2a377802a570267a811c473fae922c9e3ac49dccc17f02cb",
+      "destinationVerifiedSha256": "57c36ae316c9aec731fd12f3963e6381847cfccb0c00de29857e738db558ceb6",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports. Framework internal module renamed to TimeTripCore.js without changing its bytes; legacy source path and baseline retained. Public /time export remains unchanged."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-application",
+      "repository": "dojo-legacy",
+      "source": "shared/TimeApplicationCore.js",
+      "destination": "Frwk_Units/TimeTrip/src/TimeApplicationCore.js",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": "2cf7a86d668ad4ddd9dd466532fcac4a1dabdcfc2c7fa5a7ed2d63151309f468",
+      "destinationVerifiedSha256": "7f39e74ad34b2e09e964a36f98ba0ff958a045fe72e73717c82d50a3797e7f1c",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Existing copy inspected; public Core import substitutions are intentional where present. Source baseline captured at registration, not reconstructed from past reports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-CWorkflow",
+      "origin": "MIGRATED",
+      "repository": "framework",
+      "source": "src/prototype/workflow.ts",
+      "destination": "Frwk_Units/Workflow/src/CWorkflow.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": "45549657e655977507b56a858095271912bfe693bea717b4cbbeb769b0efb462",
+      "destinationVerifiedSha256": "458e917e284dacf3cf46760dc5535a2c44fc76e88314a7510240534d2a1f5747",
+      "verifications": [
+        "workflow"
+      ],
+      "provenance": {
+        "sourceSha256BeforeDeployment": "db480f8d6aa10a7ec61e2845e52f1a3dd346a52c783e5eb349024ce4ced209a0",
+        "additionalSource": "src/prototype/workflow.ts",
+        "additionalSourceSha256BeforeDeployment": "db480f8d6aa10a7ec61e2845e52f1a3dd346a52c783e5eb349024ce4ced209a0"
+      },
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Canonical implementation relocated; source retains a compatibility re-export. Native Forms execute with fresh visit contexts; control flow remains unchanged."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-CJobForm",
+      "origin": "MIGRATED",
+      "repository": "framework",
+      "source": "src/prototype/job-form.ts",
+      "destination": "Frwk_Units/Workflow/src/CJobForm.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": "a67169ab7b26042dc0f1d45659ebe02db3bd4f7a4123a7caf98340ff7b32a505",
+      "destinationVerifiedSha256": "015038e83ef52bae763397e188c0c3529646ee5d504c222769a6c2fa2751cc70",
+      "verifications": [
+        "workflow"
+      ],
+      "provenance": {
+        "sourceSha256BeforeDeployment": "00bbaf3ffbe4e49c29a3680ff2c1cffd1304fffec75ed72d4c23f971327dc0ca",
+        "additionalSource": "src/prototype/workflow.ts",
+        "additionalSourceSha256BeforeDeployment": "db480f8d6aa10a7ec61e2845e52f1a3dd346a52c783e5eb349024ce4ced209a0"
+      },
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Object contract retained at source; new inheritable class and shared CMRP pipeline incorporate the prior CJob execution implementation."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-src-Check-ts",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/src/Check.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "56235d965eee315002f90e13b369e8c58d490cc1d165e35f5fab0a93594e3f7f",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "New Framework integration file; not a byte-identical migration. Verification includes current source, built output and configuration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-src-index-ts",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/src/index.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "b2cf620b0df702d03b4db6e15cda68cdb232d282acdaf4cbf19c71b7fb2e0a9f",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "New Framework integration file; not a byte-identical migration. Verification includes current source, built output and configuration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-tests-workflow-test-cjs",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/tests/workflow.test.cjs",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "f239c1be19fdfa1b0efe056e6775ca026bb7bb7425271ea7b86c90e965e18b3e",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "New Framework integration file; not a byte-identical migration. Verification includes current source, built output and configuration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-docs-README-md",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/docs/README.md",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "0dedbd416b035f6dc1f56297de45ad2535946d220a9535f6c24da2777637a0c6",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "New Framework integration file; not a byte-identical migration. Verification includes current source, built output and configuration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-package-json",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/package.json",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "0b94caf6ac006d4a7daa478f4a4d8e62e675e33701bf55aea5e97c2d59b82c17",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "New Framework integration file; not a byte-identical migration. Verification includes current source, built output and configuration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-tsconfig-json",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/tsconfig.json",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "b07fdaa905321e85bee0ca4fbe2288276f114882c5df55fe9f69ebebfeba1c3c",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "New Framework integration file; not a byte-identical migration. Verification includes current source, built output and configuration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-tools-build-cjs",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/tools/build.cjs",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "d82fddc0a47eac79924095f6a1bbd2076877f73250acce4af1f4e612a54c471e",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "New Framework integration file; not a byte-identical migration. Verification includes current source, built output and configuration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-new-src-TimeTrip-js",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/TimeTrip/src/TimeTrip.js",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "83473db23d8656a660238973e04c37b3ef33959dc9014ee1db4f3c0895e80eef",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Framework integration: native CJobForm configuration job and public date wrappers, tests/documentation and local package dependency configuration. Existing three migrated implementations and source baselines retained."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-new-tests-timetrip-test-cjs",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/TimeTrip/tests/timetrip.test.cjs",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "051d84f34bed2448473c36a4b5b3f37a99d1863bb2f70bbbfc43e16f41ca24f4",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Framework integration: native CJobForm configuration job and public date wrappers, tests/documentation and local package dependency configuration. Existing three migrated implementations and source baselines retained."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-new-docs-README-md",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/TimeTrip/docs/README.md",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "7f62f727e34311d261e5e35374c98d2f698d9f0cf0d8c634c1dcac7fe2f32882",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Framework integration: native CJobForm configuration job and public date wrappers, tests/documentation and local package dependency configuration. Existing three migrated implementations and source baselines retained."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-new-package-json",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/TimeTrip/package.json",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "79dc5737d30b539ba87763e30fa0a40ff7f0d760d59bb1863b4259736e47e055",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Framework integration: native CJobForm configuration job and public date wrappers, tests/documentation and local package dependency configuration. Existing three migrated implementations and source baselines retained."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "time-new-package-lock-json",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/TimeTrip/package-lock.json",
+      "unit": "TimeTrip",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "39b91365c372ddc9857009908e7c366585aa124481d6f4ab165e676482c7056c",
+      "verifications": [
+        "time"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Framework integration: native CJobForm configuration job and public date wrappers, tests/documentation and local package dependency configuration. Existing three migrated implementations and source baselines retained."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "framework-api-tools-inspect-api-cjs",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Migration/tools/inspect-api.cjs",
+      "unit": "Framework/API",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "ca7dedde60f29ca8e844a684690e61ad509a3def8fd25bcf0631133da72c58bd",
+      "verifications": [
+        "public-api"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Development-only public entry usage and static dependency inspection. No runtime Wrapper class or new business behavior."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "framework-api-tests-public-api-test-cjs",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Migration/tests/public-api.test.cjs",
+      "unit": "Framework/API",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "907d5bc26b7658288c71e5e159eff03700fa692937ed79e711167ef80c62c6b0",
+      "verifications": [
+        "public-api"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Development-only public entry usage and static dependency inspection. No runtime Wrapper class or new business behavior."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    }
+  ]
+}

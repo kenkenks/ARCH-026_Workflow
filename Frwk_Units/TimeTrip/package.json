@@ -1,0 +1,20 @@
+{
+  "name": "@arch026/timetrip",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "exports": {
+    ".": "./src/TimeApplicationCore.js",
+    "./job": "./src/TimeTrip.js",
+    "./time": "./src/TimeTripCore.js",
+    "./context": "./src/SystemContext.js"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "dependencies": {
+    "@arch026/core": "file:../Core",
+    "@arch026/workflow": "file:../Workflow"
+  },
+  "scripts": {"test":"npm run build --prefix ../Workflow && node --test tests/timetrip.test.cjs ../../Migration/tests/assets/timetrip.test.cjs"}
+}

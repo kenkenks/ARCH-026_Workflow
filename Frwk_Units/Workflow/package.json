@@ -1,0 +1,16 @@
+{
+  "name": "@arch026/workflow",
+  "version": "0.1.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "require": "./dist/index.js", "default": "./dist/index.js" },
+    "./check": { "types": "./dist/Check.d.ts", "require": "./dist/Check.js", "default": "./dist/Check.js" }
+  },
+  "files": ["dist", "docs"],
+  "scripts": { "build": "node tools/build.cjs", "test": "npm run build && node --test tests/workflow.test.cjs" },
+  "engines": { "node": ">=24 <25" },
+  "devDependencies": { "typescript": "~5.9.3" }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@arch026/member",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "exports": {
+    ".": "./src/MemberObject.js"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "dependencies": {
+    "@arch026/core": "file:../Core"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@arch026/migration-progress",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "test": "node --test tests/management.test.mjs",
+    "migration:scan": "node src/cli.mjs scan",
+    "migration:status": "node src/cli.mjs status",
+    "migration:verify": "node src/cli.mjs verify",
+    "migration:report": "node src/cli.mjs report"
+  }
+}

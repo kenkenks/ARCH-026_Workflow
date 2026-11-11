@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.prototype.json",
+  "compilerOptions": {"outDir":"./runtime-data/workflow-unit-build","declaration":true},
+  "include": [],
+  "files": ["src/prototype/workflow.ts","src/prototype/job-form.ts","src/prototype/definition.ts","src/prototype/diagnosis.ts"]
+}

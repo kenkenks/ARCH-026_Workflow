@@ -1,0 +1,13 @@
+{
+  "name": "@arch026/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "exports": {
+    "./flow": "./src/Flow.js",
+    "./storage-id": "./src/StorageId.js"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

@@ -9,8 +9,10 @@ function classify(error) {
   if (error instanceof SimpleDBError) return error;
   // SQLite extended result codes, not OS messages or SQL text.
   const code = error?.errcode;
-  return new SimpleDBError(code === 1555 || code === 2067 ? 'ALREADY_EXISTS' :
+  const failure = new SimpleDBError(code === 1555 || code === 2067 ? 'ALREADY_EXISTS' :
     [11, 26].includes(code & 255) ? 'DATA_CORRUPT' : 'UNAVAILABLE');
+  if(Number.isInteger(code))Object.defineProperty(failure,'sqliteCode',{value:code});
+  return failure;
 }
 class SimpleDB {
   constructor(connection) { this.connection = connection; this.closed = false; this.active = false; this.poisoned = false; }
@@ -69,18 +71,25 @@ class SimpleDB {
   transaction(action) {
     this.assertOpen();
     if (this.active) throw new SimpleDBError('UNAVAILABLE');
-    let begun = false, committing = false;
+    let begun = false, committing = false, phase = 'BEGIN';
     try {
       this.connection.exec('BEGIN IMMEDIATE'); begun = true; this.active = true;
+      phase = 'ACTION';
       const result = action();
       if (result && typeof result.then === 'function') throw new SimpleDBError('UNAVAILABLE');
-      committing = true; this.connection.exec('COMMIT'); begun = false;
+      committing = true; phase = 'COMMIT'; this.connection.exec('COMMIT'); begun = false;
       return result;
     } catch (error) {
       const failure = committing ? new SimpleDBError('OUTCOME_UNKNOWN') : classify(error);
-      if (begun) try { this.connection.exec('ROLLBACK'); } catch {
+      let rollbackConfirmed = !begun;
+      if (begun) try { this.connection.exec('ROLLBACK'); rollbackConfirmed = true; } catch {
         this.poisoned = true; failure.cleanupDiagnostics = ['ROLLBACK_FAILED'];
       }
+      // Internal diagnostic facts, not raw SQL/paths or an automatic retry signal.
+      try{
+        if(!Object.hasOwn(failure,'sqliteCode')&&Number.isInteger(error?.errcode))Object.defineProperty(failure,'sqliteCode',{value:error.errcode});
+        if(!Object.hasOwn(failure,'transactionPhase'))Object.defineProperties(failure,{transactionPhase:{value:phase},rollbackConfirmed:{value:rollbackConfirmed}});
+      }catch{/* diagnostic attachment must not replace a non-extensible primary error */}
       throw failure;
     } finally { this.active = false; }
   }

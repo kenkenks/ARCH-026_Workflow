@@ -1,0 +1,12 @@
+'use strict';
+const Module=require('node:module'),path=require('node:path');
+const {CJob,CWorkflow,CMemoryHistoryStore}=require('../../dist/src/prototype/workflow');
+const {createMemoryProductShelf}=require('../../dist/src/prototype/job-form');
+const {createExamProgressAdapter,createExamProgressForm}=require('../../src/adapters/exam-progress/adapter.cjs');
+const http=require('node:http'),https=require('node:https'),net=require('node:net');
+let networkAttempts=0,sdkAttempts=0;
+const blocked=()=>{networkAttempts++;throw Error('NETWORK_FORBIDDEN');};
+global.fetch=blocked;http.request=blocked;http.get=blocked;https.request=blocked;https.get=blocked;net.connect=blocked;net.createConnection=blocked;net.Socket.prototype.connect=blocked;
+const source=path.resolve(process.argv[2]),load=Module._load;
+Module._load=function(request,parent,isMain){if(/firebase|google-cloud/.test(request)){sdkAttempts++;throw Error('SDK_FORBIDDEN');}if(path.resolve(request)!==source)throw Error('UNEXPECTED_PROJECTION_DEPENDENCY');return load.call(this,request,parent,isMain);};
+(async()=>{const {projectAttendanceProgress}=require(source),shelf=createMemoryProductShelf();shelf.put('examProgressInput',{memberId:'T002',facts:{member:{member_id:'T002',status:'有効'},attendanceRows:Array.from({length:5},(_,i)=>({member_id:'T002','稽古日':`2099-01-0${i+1}`,slot_id:'SYNTH'})),standard:{progress_display_enabled:true,required_training_count:5},rankOption:{rank_id:'SYNTH'}}});const form=createExamProgressForm(createExamProgressAdapter(projectAttendanceProgress)),workflow=new CWorkflow([{no:10,createJob:()=>new CJob(form,shelf,'result')}],new CMemoryHistoryStore()),result=await workflow.run('offline',10);process.stdout.write(JSON.stringify({workflowStatus:result.status,trainingCount:shelf.get('result').progress.trainingCount,networkAttempts,sdkAttempts,projectionDependencies:require.cache[source].children.length}));})().catch(()=>{process.exitCode=1;});

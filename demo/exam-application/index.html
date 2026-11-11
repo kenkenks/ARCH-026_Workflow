@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>審査申請 | ARCH-026 デモ</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><div class="brand">ARCH <span>026</span></div><div><span class="eyebrow">WORKFLOW LAB / EXPERIMENT 020-A</span><h1>審査申請ワークフロー</h1><p>仕事の実行と、人の判断をつなぐ。</p></div><span class="badge">合成データ・ローカル専用</span></header>
+<main>
+<aside class="notice"><strong id="storage-label">保存方式</strong><span id="storage-warning">接続を確認しています…</span></aside>
+<div class="topbar"><label>操作する合成ユーザー<select id="actor"><option value="demo-applicant">申請者</option><option value="demo-teacher">先生</option><option value="demo-admin">デモ管理者</option></select></label><p>選択はデモ資格です。本番の本人認証ではありません。</p><button id="refresh" class="secondary">履歴更新</button></div>
+<div id="message" role="status" aria-live="polite">申請内容を選び、開始してください。</div>
+<div class="layout">
+<section class="card application"><span class="eyebrow">APPLICATION</span><h2>申請情報</h2>
+<label>合成会員ID<select id="member"></select></label><label>審査級<select id="grade"></select></label>
+<button id="start">申請開始</button><p class="hint">新しい申請を開始します。既存の実行は変更しません。</p>
+<dl><dt>申請ID</dt><dd id="application-id">—</dd><dt>申請日時</dt><dd id="created-at">—</dd><dt>現在の審査級</dt><dd id="current-grade">—</dd></dl>
+</section>
+<section class="card progress"><div class="section-head"><div><span class="eyebrow">WORKFLOW</span><h2>進捗と次の操作</h2></div><span id="core-status" class="badge">未開始</span></div>
+<div id="stage" class="stage">申請をお待ちしています</div><p id="waiting" class="hint">ブラウザからの操作は、実際のCWorkflowへ渡されます。</p>
+<ol id="steps" class="steps"><li>申請受付</li><li>先生承認</li><li>審査実施確認</li><li>結果登録</li><li>完了</li></ol>
+<div id="review" class="review" hidden></div>
+<div class="actions"><button id="approve" disabled>承認</button><button id="return" class="secondary" disabled>差し戻し</button></div>
+<label>差し戻し理由<input id="reason" maxlength="200" placeholder="例：申請内容をもう一度確認してください"></label>
+<div class="field-row"><label>再申請の補足<input id="note" maxlength="200" placeholder="確認・修正した内容"></label><button id="resubmit" class="secondary" disabled>再申請</button></div>
+<div class="field-row"><label>合成審査日<input type="date" id="exam-date"></label><button id="confirm" disabled>審査実施確認</button></div>
+<div class="field-row"><label>審査結果<select id="result"><option value="PASS">合格（PASS）</option><option value="FAIL">不合格（FAIL）</option></select></label><label>点数<input type="number" id="score" min="0" max="100" value="85"></label><button id="register" disabled>結果登録</button></div>
+<div id="outcome" class="outcome" hidden></div><p class="hint">CoreのLIMIT_REACHEDは確定境界です。業務上の操作待ちとは別に表示しています。</p>
+</section></div>
+<section class="card history"><div class="section-head"><div><span class="eyebrow">AUDIT TRAIL</span><h2>ユーザー操作履歴</h2></div><span id="operation-count" class="badge">0 件</span></div><div class="table-scroll"><table><thead><tr><th>日時 / 操作ID</th><th>操作者</th><th>操作</th><th>遷移前 → 遷移後</th><th>実行結果</th></tr></thead><tbody id="operations"><tr><td colspan="5">まだ操作はありません。</td></tr></tbody></table></div>
+<details><summary>Workflow内部履歴を見る</summary><div class="table-scroll"><table><thead><tr><th>順序</th><th>日時</th><th>工程</th><th>Core結果</th><th>次の工程No</th></tr></thead><tbody id="traces"></tbody></table></div><p id="job-count" class="hint"></p></details></section>
+<footer>ARCH-026 · Prototype CWorkflow / CJobForm / Check · 実会員・実決済・実通知には接続しません。</footer>
+</main></body></html>

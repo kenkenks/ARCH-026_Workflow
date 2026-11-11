@@ -2,12 +2,12 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {WorkflowRuntime}=require('../gui/workflow-runtime');
-const {CWorkflow,CJob,CDummyJob,CCheckJob,CSequenceBool,CMemoryHistoryStore}=require('../dist/src/prototype/workflow');
+const {CWorkflow,CWorkflowTask,CDummyJob,CCheckJob,CSequenceBool,CMemoryHistoryStore}=require('../dist/src/prototype/workflow');
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 const def={id:'concurrency',version:'1',startStepId:'J',eventRoutes:[],steps:[{id:'J',type:'JOB',jobId:'job',nextStepId:'END'},{id:'END',type:'END'}]};
 function blockedWorkflow(store=new CMemoryHistoryStore()){
  const gate=deferred(),entered=deferred();let calls=0;
- class Job extends CJob{async execute(){calls++;entered.resolve();await gate.promise;}}
+ class Job extends CWorkflowTask{async execute(){calls++;entered.resolve();await gate.promise;}}
  return {store,gate,entered,get calls(){return calls;},workflow:new CWorkflow([{no:1,job:new Job('blocked')}],store)};
 }
 
@@ -107,7 +107,7 @@ for(const stage of ['load','save','beforeStep'])test(`CWorkflow ${stage} excepti
 });
 
 test('CWorkflow handler failure releases guards but preserves failed runId history',async()=>{
- class Job extends CJob{async execute(){throw Error('job failure');}}
+ class Job extends CWorkflowTask{async execute(){throw Error('job failure');}}
  const store=new CMemoryHistoryStore(),wf=new CWorkflow([{no:1,job:new Job('fails')}],store);
  assert.equal((await wf.run('a',1)).status,'FAILED');await assert.rejects(wf.run('a',1),/already exists/);assert.equal((await wf.run('b',1)).status,'FAILED');
  const other=new CWorkflow([{no:1,job:new CDummyJob('new')}],store);await assert.rejects(other.run('a',1),/already exists/);

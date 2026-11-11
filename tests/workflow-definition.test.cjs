@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),{spawnSync,fork}=require('node:child_process');
 const syncFs=require('node:fs');
-const {CMemoryHistoryStore,CJob,CCheckJob}=require('../dist/src/prototype/workflow');
+const {CMemoryHistoryStore,CDummyJob,CCheckJob}=require('../dist/src/prototype/workflow');
 const {loadWorkflow,reconstructWorkflow,validatePrototypeDefinition}=require('../dist/src/prototype/definition');
 const {LocalWorkflowDefinitionRepository}=require('../src/adapters/workflow-definition/local-file.cjs');
 const {definition,registry}=require('./workflow-definition/fixture.cjs');
@@ -57,7 +57,7 @@ test('composite identities do not collide and HelloWorld ID restrictions are not
   for(const [id,version]of [['a__b','c'],['a','b__c'],['workflow/example','version with spaces']]){const d=definition(version);d.definitionId=id;await repo.add(d);assert.deepEqual(await repo.get(id,version),d);}
 }));
 test('invalid topology, callbacks and Job instances are rejected before save',()=>temporary(async(dir,repo)=>{
-  for(const change of [d=>{d.steps[0].callback=()=>{};},d=>{d.steps[0].job=new CJob('bad');},d=>{d.steps[1].stepNo=10;},d=>{d.steps[1].stepId='start';},d=>{d.steps[0].nextStepId='missing';},d=>{d.startStepId='missing';},d=>{d.steps=[];}]){
+  for(const change of [d=>{d.steps[0].callback=()=>{};},d=>{d.steps[0].job=new CDummyJob('bad');},d=>{d.steps[1].stepNo=10;},d=>{d.steps[1].stepId='start';},d=>{d.steps[0].nextStepId='missing';},d=>{d.startStepId='missing';},d=>{d.steps=[];}]){
     const d=definition();change(d);await assert.rejects(repo.add(d),{code:'INVALID_DEFINITION'});
   }
   assert.deepEqual(await fs.readdir(dir),[]);
