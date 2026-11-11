@@ -85,9 +85,9 @@ CJob・Workflowは、現時点では独立したオプションモジュール�
 
 | 文書 | 確認事項と今回の扱い |
 | --- | --- |
-| [ARCH-026統合版](../../ARCH-026_Workflow_Event_Architecture_統合版.md) | 業務ワークフローを中心とする設計案。本ADRは基盤全体の対象範囲を拡張する。ワークフローの業務非依存原則を置き換えず、既存の業務規則・未決定事項を承認し直さない。 |
+| [ARCH-026統合版](../architecture/ARCH-026_Workflow_Event_Architecture_統合版.md) | 業務ワークフローを中心とする設計案。本ADRは基盤全体の対象範囲を拡張する。ワークフローの業務非依存原則を置き換えず、既存の業務規則・未決定事項を承認し直さない。 |
 | [README](../../README.md) | ワークフロー骨格中心の説明であり、統合版をsource of truthとしている。今後の基盤方針は本ADR、既存ワークフロー詳細は既存資料を参照する。説明中の「npm scriptsなし」「tests未実装」は現状と不整合だが、今回は修正しない。 |
-| [PROTOTYPE_GUIDE](../../PROTOTYPE_GUIDE.md) | prototypeとCoreが未統合であること、永続化・再開等が未実装であることを保持する。prototypeの契約を基盤全体の確定契約へ昇格しない。 |
+| [PROTOTYPE_GUIDE](../guides/PROTOTYPE_GUIDE.md) | prototypeとCoreが未統合であること、永続化・再開等が未実装であることを保持する。prototypeの契約を基盤全体の確定契約へ昇格しない。 |
 | [Adapter境界](../../src/adapters/README.md) | 業務APIを並行新設しない方針は維持する。「Required adapters」はワークフローの文脈であり、すべての基盤利用アプリへの必須要件とはしない。 |
 | [Phase 4B](../WORKFLOW_RUNTIME_PHASE4B.md)・[Phase 4C-2](../PHASE4C2_JOB_AND_INSERT.md) | 4Bの全JOB模擬という記述は後続4C系で一部進展している。工程ごとの記録として扱い、DB未接続・メモリ保持の制約が解消したとは解釈しない。 |
 

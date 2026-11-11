@@ -1,6 +1,6 @@
 # ARCH-026 implementation skeleton (design scaffold, NOT executable workflow)
 
-Source of truth: `ARCH-026_Workflow_Event_Architecture_統合版.md` (included). Mermaid diagrams and definition tables remain in that document.
+Source of truth: `docs/architecture/ARCH-026_Workflow_Event_Architecture_統合版.md` (included). Mermaid diagrams and definition tables remain in that document.
 
 ## Boundaries
 
