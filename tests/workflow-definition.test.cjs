@@ -6,6 +6,16 @@ const {CMemoryHistoryStore,CDummyJob,CCheckJob}=require('../dist/src/prototype/w
 const {loadWorkflow,reconstructWorkflow,validatePrototypeDefinition}=require('../dist/src/prototype/definition');
 const {LocalWorkflowDefinitionRepository}=require('../src/adapters/workflow-definition/local-file.cjs');
 const {definition,registry}=require('./workflow-definition/fixture.cjs');
+test('Prototype compatibility entry re-exports the canonical Unit Builder and contracts',()=>{
+ const old=require('../dist/src/prototype/definition'),canonical=require('../dist/Frwk_Units/Workflow/src/WorkflowBuilder'),dto=require('../dist/Frwk_Units/Workflow/src/Definition');
+ assert.strictEqual(old.reconstructWorkflow,canonical.reconstructWorkflow);assert.strictEqual(old.loadWorkflow,canonical.loadWorkflow);assert.strictEqual(old.DefinitionError,dto.DefinitionError);assert.strictEqual(old.validatePrototypeDefinition,dto.validatePrototypeDefinition);
+});
+test('formal package and Prototype Builders preserve equivalent factory timing, topology and history',async()=>{
+ const formal=require('../Frwk_Units/Workflow/dist'),old=require('../dist/src/prototype/workflow');
+ async function run(api){const made=[],d=definition();let fixed=0,checks=0;const r={jobs:new Map([['sample.work',()=>{fixed++;return new api.CDummyJob('work',()=>made.push('work'));}],['sample.finish',()=>{fixed++;return new api.CDummyJob('finish',()=>made.push('finish'));}]]),checks:new Map([['sample.sequence',()=>{checks++;return new api.CSequenceBool([false,true]);}]])};
+  const graph=api.reconstructWorkflow(d,r,new api.CMemoryHistoryStore());assert.equal(fixed,2);assert.equal(checks,1);assert.deepEqual(made,[]);const result=await graph.workflow.run('equivalent',graph.startStepNo);return {definition:graph.definition,startStepNo:graph.startStepNo,status:result.status,current:result.currentStepNo,history:result.history.map(({at,...h})=>h),made,fixed,checks};}
+ assert.deepEqual(await run(formal),await run({...old,reconstructWorkflow}));
+});
 async function temporary(action){const dir=await fs.mkdtemp(path.join(os.tmpdir(),'arch026-definition-'));try{return await action(dir,new LocalWorkflowDefinitionRepository(dir));}finally{await fs.rm(dir,{recursive:true,force:true});}}
 function child(mode,dir,version='v1'){
   const r=spawnSync(process.execPath,[path.join(__dirname,'workflow-definition/child.cjs'),mode,dir,version],{encoding:'utf8',windowsHide:true,timeout:10000});

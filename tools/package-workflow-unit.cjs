@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
-const root=path.resolve(__dirname,'..'),version='0.3.0-framework.3',name='@arch026/workflow-unit';
+const root=path.resolve(__dirname,'..'),version='0.3.0-framework.5',name='@arch026/workflow-unit';
 const api={workflow:['WorkflowValidationError','CWorkflowTask','CJob','CDummyJob','CCheckJob','CSequenceBool','WorkflowRunError','CMemoryHistoryStore','CWorkflow','CWorkflowMonitor'],
  'job-form':['createMemoryProductShelf','bindJobForm'],definition:['DEFINITION_SCHEMA_VERSION','WAITING_DEFINITION_SCHEMA_VERSION','DefinitionError','validateDefinitionKey','validatePrototypeDefinition','reconstructWorkflow','loadWorkflow'],diagnosis:['diagnoseSavedRun']};
 const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
@@ -14,11 +14,10 @@ function build(output=path.join(root,'runtime-data/workflow-unit')){
   for(const ext of ['js','d.ts'])put(`dist/src/prototype/${base}.${ext}`,fs.readFileSync(path.join(root,`runtime-data/workflow-unit-build/src/prototype/${base}.${ext}`)));
  }
  // Prototype paths are compatibility entries; include their canonical Unit implementation.
- for(const base of ['CWorkflow','CJobForm']){
+ for(const base of ['CWorkflow','CJobForm','Definition','WorkflowRegistry','WorkflowBuilder']){
   const src=`Frwk_Units/Workflow/src/${base}.ts`;sources[src]=digest(fs.readFileSync(path.join(root,src)));
   for(const ext of ['js','d.ts'])put(`dist/Frwk_Units/Workflow/src/${base}.${ext}`,fs.readFileSync(path.join(root,`runtime-data/workflow-unit-build/Frwk_Units/Workflow/src/${base}.${ext}`)));
  }
- for(const p of ['ports/contracts.d.ts','core/types.d.ts'])put('dist/src/'+p,fs.readFileSync(path.join(root,'runtime-data/workflow-unit-build/src',p)));
  for(const base of ['emulator','store','composition','waiting']){const p=`src/adapters/workflow-firestore/${base}.cjs`,bytes=fs.readFileSync(path.join(root,p));put(p,bytes);sources[p]=digest(bytes);}
  const waiting='src/adapters/workflow-waiting/lifecycle.cjs',waitingBytes=fs.readFileSync(path.join(root,waiting));put(waiting,waitingBytes);sources[waiting]=digest(waitingBytes);
  for(const base of ['waiting','firestore'])for(const ext of ['cjs','d.ts']){const p=`tools/workflow-unit/${base}.${ext}`,bytes=fs.readFileSync(path.join(root,p));put(`${base}.${ext}`,bytes);sources[p]=digest(bytes);}

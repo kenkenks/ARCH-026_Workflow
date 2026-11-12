@@ -114,7 +114,7 @@
         "src/prototype/definition.ts",
         "Frwk_Units/Workflow/tests"
       ],
-      "expectedTests": 20
+      "expectedTests": 28
     },
     {
       "id": "public-api",
@@ -481,7 +481,7 @@
       "destination": "Frwk_Units/Workflow/src/index.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "b2cf620b0df702d03b4db6e15cda68cdb232d282acdaf4cbf19c71b7fb2e0a9f",
+      "destinationVerifiedSha256": "3dfa6eacf350e2fadd4e4aa83f4607ccd479a60400a733d69539324dd76d5926",
       "verifications": [
         "workflow"
       ],
@@ -504,7 +504,7 @@
       "destination": "Frwk_Units/Workflow/tests/workflow.test.cjs",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "f239c1be19fdfa1b0efe056e6775ca026bb7bb7425271ea7b86c90e965e18b3e",
+      "destinationVerifiedSha256": "558d17bbb3aa7d4728f6ff08a441fb42ee151ec1d9f1afd07c16090b4b53dd1b",
       "verifications": [
         "workflow"
       ],
@@ -527,7 +527,7 @@
       "destination": "Frwk_Units/Workflow/docs/README.md",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "0dedbd416b035f6dc1f56297de45ad2535946d220a9535f6c24da2777637a0c6",
+      "destinationVerifiedSha256": "03735d591ee20008789efc0a46324edf40e220f22fc025f69dff346ceaef74da",
       "verifications": [
         "workflow"
       ],
@@ -765,6 +765,107 @@
         "analyzed": true,
         "disposition": "ACTIVE",
         "notes": "Development-only public entry usage and static dependency inspection. No runtime Wrapper class or new business behavior."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-Definition",
+      "origin": "MIGRATED",
+      "repository": "framework",
+      "source": "src/prototype/definition.ts",
+      "destination": "Frwk_Units/Workflow/src/Definition.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": "b564f1c57e66d7aefbaee02f7bcfaac78ff292ecbdec9efcf946028d362f4cce",
+      "destinationVerifiedSha256": "48e5f7c0333e4f8bd7a5fb703e750a7a23666325dbf702aba5a6723a814e1572",
+      "verifications": [
+        "workflow"
+      ],
+      "provenance": {
+        "sourceSha256BeforeDeployment": "beea235ca29aee6570d3d6ac653e77dfa8f3af24d2b2ae51f6af1bd5bdc47e40"
+      },
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Extracted existing Definition/Registry/Builder responsibilities without changing schema, factory timing or execution. Prototype retains compatibility exports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-WorkflowRegistry",
+      "origin": "MIGRATED",
+      "repository": "framework",
+      "source": "src/prototype/definition.ts",
+      "destination": "Frwk_Units/Workflow/src/WorkflowRegistry.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": "b564f1c57e66d7aefbaee02f7bcfaac78ff292ecbdec9efcf946028d362f4cce",
+      "destinationVerifiedSha256": "a1f8ec556a86dab49d9e1a8a2c801e731258c3307b1bdabd4b78f3c9e2fb9f06",
+      "verifications": [
+        "workflow"
+      ],
+      "provenance": {
+        "sourceSha256BeforeDeployment": "beea235ca29aee6570d3d6ac653e77dfa8f3af24d2b2ae51f6af1bd5bdc47e40"
+      },
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Extracted existing Definition/Registry/Builder responsibilities without changing schema, factory timing or execution. Prototype retains compatibility exports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-WorkflowBuilder",
+      "origin": "MIGRATED",
+      "repository": "framework",
+      "source": "src/prototype/definition.ts",
+      "destination": "Frwk_Units/Workflow/src/WorkflowBuilder.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": "b564f1c57e66d7aefbaee02f7bcfaac78ff292ecbdec9efcf946028d362f4cce",
+      "destinationVerifiedSha256": "0c8a4534181cb74b5640ee6e8c1abf8cfc6e4e7cb60325ce385a553eda57151a",
+      "verifications": [
+        "workflow"
+      ],
+      "provenance": {
+        "sourceSha256BeforeDeployment": "beea235ca29aee6570d3d6ac653e77dfa8f3af24d2b2ae51f6af1bd5bdc47e40"
+      },
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Extracted existing Definition/Registry/Builder responsibilities without changing schema, factory timing or execution. Prototype retains compatibility exports."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-tests-builder-test-cjs",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/tests/builder.test.cjs",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "e52fe1648ba5f31ab1402080077d39e8e8518f4d0810bfbb1507563e5869bc2e",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Public Builder contract tests invoked by the existing Unit test entry; covers construction timing, loops, continuations and execution isolation."
       },
       "approval": {
         "approved": false,

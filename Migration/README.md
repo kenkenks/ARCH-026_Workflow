@@ -616,3 +616,49 @@ Member試験20件はMigration再検証75件にも含まれ、故障注入の子�
 member-schemaはCOPIED／TEST_MISSINGからVERIFIEDへ移行した。Schemaの内容・SHA-256は元の`1011f03560c36a7283ce4f4a8d17bd45f9b81a5940b9573ebc0a6cc07eb119da`から不変で、専用試験のPASSと現在の入力指紋に基づく判定である。COMPLETEではなく、承認は26件すべてfalseのまま。26/26という登録資産の検証状況は、Framework全体の完成率・業務仕様の完全性を表さない。
 
 Member Schemaの「専用試験不足」は解消した。次工程では、公開DTOとのname／status／識別子の対応、業務形式・範囲制約、汎用YAML／型検証の適用範囲を必要に応じて決定する。既存のPrototype／Registry／配布境界、TimeTripの保存契約等の残課題は、本件によって解消したとは扱わない。保留5文書・旧道場・Schema業務仕様・既存公開API・既存配布アーカイブは変更していない。
+
+## 第3工程の設計決定と次回再開先（2026-11-12）
+
+案B＋Dの調査結果・利用者による決定は、[Workflow Unit資料](../Frwk_Units/Workflow/docs/README.md)の「第3工程：案B＋Dの設計決定履歴」へ追記した。独立した案D調査ファイルは確認できなかったため、既存Unit資料を反映先とし、重複資料は作成していない。
+
+基本方針は、宣言的Definitionを正規形式とし、利用者・開発者が決めた構成をBuilderがRegistry・Factoryを使って組み立て、CWorkflowは構築済み構成の実行を制御する案B＋D。訪問ごとのJob生成には既存Factory方式を活用し、reconstructWorkflow()等を出発点とする。成果物配置はWorkflow側の責務とし、実行別領域・デフォルト共通成果物台・Definitionによる名前付き箱を扱う方針を記録したが、これらの追加規則は実装完了ではない。
+
+イベント機構はWorkflow横断連携の独立課題。CJobFormのpostはイベント機構側の検討課題とし、削除・再定義・実装変更は行わず、CMRP 6工程を維持する。配置先解決・成果物識別・循環・格納時期・永続化、イベント発行／購読／起動、公開API・互換性・Unit配置の詳細は未決定のまま。
+
+次回は上記Unit資料を確認し、Builder／Registry／訪問時Factoryの境界と成果物管理契約から実装検討を再開する。今回の作業はこの2資料の追記のみ。テスト・Build・Migration再検証は実行せず、Registry・証跡・完了承認は更新していない。過去の26/26 VERIFIEDという記録を今回再検証したとは扱わない。保留中の5文書、ソース・設定、旧配布物、旧道場側は変更しない。
+
+## Workflow Builder第1段階：実装結果と資料・証跡整合
+
+前節までの未実施・再開候補という記述は当時の履歴として保持する。その後、正式Workflow UnitのDefinition.ts／WorkflowRegistry.ts／WorkflowBuilder.tsへ正本を移設し、ルートexportから公開した。reconstructWorkflow()の既存処理を再利用し、新しいBuilderクラスは導入していない。Prototype definition.tsは互換再export入口を維持し、実行アルゴリズム・Factory生成タイミング・Check評価・WAITING／LIMIT_REACHED再開・訪問番号継続を変更していない。正式APIの詳細は[Workflow Unit資料](../Frwk_Units/Workflow/docs/README.md)の「Builder正式Unit化・第1段階の実装結果」を参照する。
+
+配布生成器は正本モジュール収録へ追随し、クリーンBuildでは不要になった旧Port／Core宣言のコピーを除去した。配布候補は0.3.0-framework.5。以前からの8アーカイブおよび実装中の生成物を上書きせず、公開・利用先導入は行っていない。HEADはb6f52936d37718264b003097141f817b7716898dを維持し、Stage・Commit・Pushは別途判断とする。
+
+### 前回の実装・検証結果（今回の再実行とは別）
+
+Workflow Unit 28 PASS、Factory・SQLite・WAITING・再開等148 PASS、Definition・互換入口20 PASS、配布4 PASS、ルート541 PASS、Migration管理30 PASS、影響したMigration検証53 PASS。Build・型検査・独立パッケージ実行と型利用もPASS。これらには重複があるため単純加算しない。制限環境内のルート中断とMigration管理1 SKIPの後、許可されたローカル権限で541／30 PASSを確認した。Firestore Emulator試験は未実施。
+
+### 登録・証跡と今回の運用
+
+前回は移設3ソースをMIGRATED、Builder試験をNEWとして追加し、計30資産を登録した。移設元の変更前SHAはprovenanceへ、互換入口の現在SHAはsourceBaselineへ保持する。既存資産と全承認を維持し、29 VERIFIED、Workflow READMEのみDESTINATION_CHANGED／VERIFICATION_STALEを残した。
+
+今回、資料更新後の状態を既存のBuild・型検査・試験とMigration検証手順で確認する。verifierは関連試験のPASSと実ファイルSHAに基づいてdestinationVerifiedSha256を更新し、scannerは現時点の入力指紋も一致する場合にのみVERIFIEDとする。判定条件の変更・COMPLETE承認は行わない。最新件数・警告は`reports/status.md`、実行結果・指紋は`reports/latest.json`を参照する。資料の内容をテストが意味的に証明したという保証ではなく、実装との読み合わせとハッシュに結び付いた検証範囲である。
+
+前回の実装前証跡`reports/history/workflow-builder-before-stage1.json`を保全し、今回の更新直前のRegistry・latest・status原文も`reports/history/workflow-builder-before-final-docs.json`へSHA付きで保存した。過去のPASS・SKIPを改変せず、最新証跡の再実行結果と区別する。
+
+### Git確定時の境界と残課題
+
+- A：前回のBuilder実装14ファイル（正本3ソース・index・Prototype入口・Unit／互換／配布試験・生成器・Migration登録と証跡）。Migrationの3現行ファイルには今回の再検証更新も重なる。
+- B：今回の2 README末尾追記と更新前証跡保存、必要なRegistry・最新証跡・状態レポート更新。
+- C：開始前からの保留計画書1件・architectureの未追跡4文書は対象外。2 READMEにも今回より前の案B＋D・成果物・Event設計追記があるため、全ファイル一括Stageではそれらも含まれる。実装結果追記と既存設計追記を分けてレビューし、利用者の許可なく対象へ含めない。
+
+注意：最新のWorkflow README検証指紋は、既存設計追記を含む作業ツリー全体の内容に対応する。既存追記を除いた部分Stage版は別SHAとなるため、そのまま最新証跡と一致するとは扱えない。確定時は資料全体を含める許可を確認するか、切り出す実内容に対して証跡を再検証する必要がある。今回、部分Stageや既存追記の除去は行わない。
+
+名前付き成果物箱・新しい共通成果物台管理、Event機構、postとの正式な関係、Job／Check実装Version固定、Diagnosisの6工程対応は未完了のまま。これらの設計判断や実装、旧配布の更新・利用先導入は別工程である。
+
+### 今回の最終確認結果
+
+資料更新後にWorkflow Unit 28 PASS、Definition・Factory・SQLite・WAITING／再開等168 PASS、Migration管理30 PASSを再実行した（FAIL・SKIP 0）。Unit Build、ルートBuild、両TypeScript設定のnoEmit型検査、git diff --checkもPASS。Migration管理のjunction試験は許可済みのローカル権限で実施した。
+
+既存migration:verifyは7グループ計83 PASS（DB 7・Core 3・Member 3・TimeTrip 17・Workflow 28・公開API 8・Member Schema 17）。更新後READMEの実SHAを含む指紋で再検証し、30/30 VERIFIED・警告0・未登録0・COMPLETE承認0を確認した。上記の28件等と重複するため合計試験数には加算しない。過去の29 VERIFIEDという記述は前回時点の履歴として保持する。
+
+ルート全回帰541件、配布4件、独立パッケージ実行・型利用は前回の結果を記録したもので、今回は再実行していない。Firestore Emulatorは引き続き未実施。今回、ソース・API・実行方式の修正や配布物再生成、DB Schema Migration・実データMigration、Stage・Commit・Pushは行っていない。

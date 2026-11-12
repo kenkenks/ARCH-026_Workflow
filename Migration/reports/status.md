@@ -28,6 +28,10 @@
 | time-new-package-lock-json | Frwk_Units/TimeTrip/package-lock.json | TimeTrip | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | framework-api-tools-inspect-api-cjs | Migration/tools/inspect-api.cjs | Framework/API | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | framework-api-tests-public-api-test-cjs | Migration/tests/public-api.test.cjs | Framework/API | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| workflow-Definition | Frwk_Units/Workflow/src/Definition.ts | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| workflow-WorkflowRegistry | Frwk_Units/Workflow/src/WorkflowRegistry.ts | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| workflow-WorkflowBuilder | Frwk_Units/Workflow/src/WorkflowBuilder.ts | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| workflow-new-tests-builder-test-cjs | Frwk_Units/Workflow/tests/builder.test.cjs | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 
 ## 未登録ファイル
 
