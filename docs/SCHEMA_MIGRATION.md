@@ -26,7 +26,9 @@ Data Migrationの論理Schema 1→2（name→label）とは独立した変更。
 
 - `src/adapters/simpledb/database.cjs`: 既存接続/同期Transaction/エラー処理。Openに既知旧版のMIGRATION_REQUIRED通知を追加。
 - `src/adapters/data/simpledb.cjs`: DATA_STORAGE_SCHEMA（新規DB用v2）、DATA_STORAGE_SCHEMA_V1（明示的な旧版参照）、index DDL。
-- `src/adapters/simpledb/schema-migration.cjs`: SQLite専用Registry/Planner/Executor。Definition/Dataの論理Migrationを変更しない。
+- `src/adapters/simpledb/schema-migration.cjs`: 既定Registryを注入する互換入口（末尾の汎用化記録参照）。
+- `src/adapters/simpledb/schema-migration-engine.cjs`: Registry明示指定の汎用Planner/Executor。
+- `src/adapters/simpledb/schema-migration-registry.cjs`: ARCH標準Data／Definition Registry。Definition/Dataの論理Migrationを変更しない。
 - `tools/schema-migration.cjs`: Dry Runと明示適用の別入口。
 
 RegistryはDB種別、application_id、既知Versionの物理Schema、順序付き経路、Migration ID、同期apply/verifyを明示登録する。
@@ -118,3 +120,108 @@ CLI終了コード: 0成功、2適用停止/結果不明、1計画/入力エラ�
 `npm run test:schema-migration`。新規一時DBのみで、実DDLの1→2、行/Revision保全、CAS、Data Migration、別プロセスOpenを実行する。
 未知/不正Schema、欠落経路、事前変更、DDL/Version/commit/rollback/close障害、順序、async拒否、CLIを試験する。
 Definitionはv1識別とNO_OP・既存保存のみを検証。DefinitionのSchema変更経路は未実装・未検証。
+
+## 2026-11-12：Migration Engine汎用化の逆輸出
+
+### 目的・出所・変更範囲
+
+ARCH-026 → ThemeDialogueAI-P → ARCH-026の再利用検証結果を還元した。
+ARCH-026基準HEADはa54e9d2f0f15111c88ba495356cfcbbff1692fc0。
+参照元はThemeDialogueAI-Pのb43694b602cd00b47c75ee8c4f4c8e1fc0268bf8。
+
+候補パッチをそのまま適用すると既定Registryの利用者が非互換になるため、業務定義と汎用処理を分離し、既存入口を互換レイヤーとして維持した。
+
+| ファイル | 役割・変更 |
+|---|---|
+| src/adapters/simpledb/schema-migration-engine.cjs | Registry必須の汎用Planner／Executor。ThemeDialogueAI-Pの検証済みEngineとバイト一致 |
+| src/adapters/simpledb/schema-migration-registry.cjs | 元のData／Definition Schema、Validator、Migration step、既定Registryを移動 |
+| src/adapters/simpledb/schema-migration.cjs | 従来のExport名・呼出し方法を保つ薄い入口 |
+| tests/schema-migration-generic.test.cjs | 独立アプリのRegistry、業務依存なしでの読み込み、互換性・不変性・rollback検証 |
+| package.json | 既存test／test:schema-migrationに新規テストを追加。依存関係変更なし |
+| docs/SCHEMA_MIGRATION.md | 構成・互換性・検証結果の追記 |
+
+SimpleDB、既存CLI、既存テスト、Data／Definition業務モデル、Workflow本体の実装は変更していない。
+ThemeDialogueAI-P側のコード・Registry・API・SQLite Schemaも変更していない。
+ThemeDialogueAI-P固有のusers等5テーブル、Repository、Node APIは逆輸出していない。
+
+### 読み込みと互換性
+
+従来の入口はそのまま利用できる。
+
+~~~js
+const { planSchemaMigration, executeSchemaMigration } =
+  require('./src/adapters/simpledb/schema-migration.cjs');
+const plan = planSchemaMigration(dbFile, { kind: 'data', targetVersion: 2 });
+const result = executeSchemaMigration(dbFile, plan);
+~~~
+
+- Registryを省略、またはundefined指定すると従来のARCH既定Registryを注入する。
+- SCHEMA_MIGRATION_REGISTRYのExportを維持する。遅延getterが同一のRegistryオブジェクトを返す。
+- 第3引数に独自Registryを渡した場合は、それをそのまま汎用Engineへ渡す。null等を既定Registryへ暗黙に置換しない。
+- plan／executeの結果形式、エラー、計画指紋、Transaction、不変性、再観測の処理は変更しない。
+- tools/schema-migration.cjsの入口・引数・出力・終了コードを変更していない。
+- ARCH既定Registryを実際に使う場合は従来どおり業務Validatorのdistが必要であり、npm run buildを先に行う。
+
+業務定義を一切読み込まない入口：
+
+~~~js
+const { planSchemaMigration, executeSchemaMigration } =
+  require('./src/adapters/simpledb/schema-migration-engine.cjs');
+const plan = planSchemaMigration(dbFile, { kind: 'myApplication', targetVersion: 2 }, myRegistry);
+const result = executeSchemaMigration(dbFile, plan, myRegistry);
+~~~
+
+汎用EngineはNode標準モジュールとdatabase.cjsだけを直接読み込む。
+既存互換入口も、独自Registryで利用する場合にはARCH既定Registryを読み込まない。
+標準Registryの読込は、既定値を使う呼出しまたはSCHEMA_MIGRATION_REGISTRYの取得時に限定する。
+
+Registry契約は従来どおりapplicationId／versions／steps／rowsSQL／validateRowsである。
+具体的な独立2テーブルRegistryはtests/schema-migration-generic.test.cjsのcustomRegistryを参照する。
+実レコードと関連行の両方を観測し、どちらの改変も検出する。空・定数の検証結果で安全性を回避していない。
+
+### アルゴリズム維持の確認
+
+汎用EngineはThemeDialogueAI-Pのsrc/wrapper/sqlite/schema-migration.cjsとバイト一致する。
+
+SHA-256：9624b8a2affb2132794ac055eb774699698076853e78375420e30b394939083e
+
+また、ARCH-026の変更前コードから業務定義と既定引数を分離した結果とも一致する。
+Planner／Executorを作り直したのではなく、既存の処理本体を分離した。
+標準RegistryのvalidateDataRows／validateDefinitionRows／dataStep／Registry定義は内容を維持して別モジュールへ移した。
+
+既存の制約も維持する。任意データ変換、downgrade、非同期Migration、複数DB横断Transactionは追加しない。
+Registryは信頼済みコードであり、関数本体自体をRegistry指紋でハッシュする機能は引き続きない。
+
+### 検証結果
+
+Node.js v24.16.0で実施。
+
+| 検証 | 結果 |
+|---|---|
+| 変更前npm test | 529件PASS、FAIL／skip 0 |
+| 分離後の既存Schema Migrationテスト | 20件PASS、既存テスト無変更 |
+| 新規の汎用性・互換性テスト | 10件PASS |
+| 変更後npm test（TypeScript buildを含む） | 539件PASS、FAIL／skip 0 |
+| 既存CLI dry-run／apply | 上記既存20件に含めてPASS |
+| 汎用Engineの移植元との照合 | バイト一致 |
+| SimpleDB・既存未コミット成果の保全 | 変更前とのハッシュ一致 |
+| ThemeDialogueAI-Pの保全 | 追跡・未追跡ファイルのハッシュ、Git状態・HEADの不変を確認 |
+| Git差分・新規ファイルの空白検査 | PASS |
+
+新規テストではdatabase.cjs、汎用Engine、互換入口の3ファイルだけを一時ディレクトリへ置き、業務モジュールのロードを禁止した別プロセスで計画・実行した。
+distやWorkflow／DemoItemのSchema・Validatorがなくても、独自Registryで実Migrationが成功する。
+
+独立2テーブルそれぞれのデータ改変、verifyによる削除、callback例外、後続step失敗を検出し、Schema／user_version／データのrollbackを確認した。
+標準Registryを明示注入した汎用Engineと従来入口の計画・実行結果が一致することも確認した。
+
+Firestore専用テスト、ブラウザE2E、配布パッケージのリリース検証は今回実行していない。npm testの範囲と混同しない。
+実運用DB、クラウド、道場システムへの適用は行っていない。
+
+### 判定と残課題
+
+今回の汎用化・回帰検証はPASS。既存未コミット成果とは分離し、上記6ファイルを限定コミット可能な状態とする。
+ステージング・コミット・Pushは未実施。
+
+将来の配布時には汎用EngineとSimpleDBを含める必要がある。共通パッケージ化や配布構成の変更は今回行っていない。
+道場システムへの適用は、Firestore構成・Workflow統合計画・DB Adapter契約を別途調査して判断する。
+SQLiteのEngineを、そのままFirestoreのMigrationへ適用できると判断したものではない。
