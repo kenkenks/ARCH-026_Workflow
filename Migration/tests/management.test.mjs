@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {digest,fingerprint,validateRegistry,resolveSafe} from '../src/registry.mjs';
 import {scan,verificationInputs} from '../src/scanner.mjs';
-import {runGroup} from '../src/verifier.mjs';
+import {runGroup,verify} from '../src/verifier.mjs';
 import {report} from '../src/reporter.mjs';
 const put=(root,p,s)=>{fs.mkdirSync(path.dirname(path.join(root,p)),{recursive:true});fs.writeFileSync(path.join(root,p),s);};
 
@@ -57,3 +57,32 @@ test('zero tests and skipped tests cannot be verified',()=>executableFixture(({r
 test('actual test failures are retained',()=>executableFixture(({root,g,write})=>{write("require('node:test').test('fixture',()=>{throw Error('fault');});");const result=runGroup(root,g);assert.equal(result.outcome,'FAIL');assert.match(result.log,/fault/);}));
 test('file mutation during a passing test invalidates verification',()=>executableFixture(({root,g,write})=>{write("require('node:test').test('fixture',()=>require('node:fs').writeFileSync('unit/dependency.js','changed'));");const result=runGroup(root,g);assert.equal(result.outcome,'FAIL');assert.equal(result.diagnostic,'INPUT_CHANGED_DURING_TEST');}));
 test('dependency change requires renewed approval even after fresh verification',()=>fixture(({r,root,asset})=>{r.assets[0].destinationVerifiedSha256=digest('destination');r.assets[0].approval={approved:true,destinationSha256:digest('destination'),verificationFingerprint:asset().approvalVerificationFingerprint};put(root,'unit/dependency.js','new');assert.equal(asset().progress,'VERIFIED');assert.equal(asset().skip,false);assert.equal(r.assets[0].approval.approved,true);}));
+
+test('Member Schema real verification refuses a broken schema and expires on validator changes',()=>{
+ const parent=fs.realpathSync(os.tmpdir()),root=fs.mkdtempSync(path.join(parent,'member-schema-verification-'));
+ const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
+ const schema='Frwk_Units/Member/schema/Member.yml';
+ const copied=[schema,'Frwk_Units/Member/tests/schema.test.mjs','Frwk_Units/Member/package.json','Frwk_Units/Member/src/MemberObject.js',
+  'Frwk_Units/Core/package.json','Frwk_Units/Core/src/Flow.js','Frwk_Units/Core/src/StorageId.js',
+  'Frwk_Units/DB/Builder/package.json','Frwk_Units/DB/Builder/src/portable-data-definition-core.mjs','Frwk_Units/DB/Builder/src/portable-data-definition-builder.mjs','Frwk_Units/DB/Builder/src/Schema_Renderer_Firestore.js',
+  'Migration/package.json',...['verifier.mjs','network-guard.cjs','registry.mjs','scanner.mjs'].map(p=>'Migration/src/'+p)];
+ try{
+  for(const p of copied)put(root,p,fs.readFileSync(path.join(repo,p)));
+  const core=path.join(root,'Frwk_Units/Core'),installed=path.join(root,'Frwk_Units/Member/node_modules/@arch026/core');fs.cpSync(core,installed,{recursive:true});
+  const original=fs.readFileSync(path.join(root,schema),'utf8'),originalHash=digest(original);put(root,'baseline/Member.yml',original);
+  const group={id:'schema',kind:'node-test',persistent:true,expectedTests:17,tests:['Frwk_Units/Member/tests/schema.test.mjs'],inputs:['Frwk_Units/Member','Frwk_Units/DB/Builder','Frwk_Units/Core']};
+  const registry={schemaVersion:1,repositories:{framework:{root:'.'}},discoveryRoots:['Frwk_Units/Member/schema'],verifications:[group],assets:[{id:'schema',repository:'framework',source:'baseline/Member.yml',destination:schema,unit:'Member',sourceBaselineSha256:originalHash,destinationVerifiedSha256:null,verifications:['schema'],decision:{analyzed:true,disposition:'ACTIVE',notes:'isolated verification fixture'},approval:{approved:false,destinationSha256:null}}]};
+  put(root,'Migration/registry.json',JSON.stringify(registry));
+  const good=verify(root,registry);assert.equal(good.evidence.groups.schema.outcome,'PASS',good.evidence.groups.schema.log);assert.equal(scan(root,good.registry,good.evidence).assets[0].progress,'VERIFIED');
+  const broken=original.replace('    type: string','    type: invalid-member-type');assert.notEqual(broken,original);put(root,schema,broken);
+  const failed=verify(root,good.registry,good.evidence);assert.equal(failed.evidence.groups.schema.outcome,'FAIL');assert.equal(failed.evidence.groups.schema.counts.tests,17);assert.ok(failed.evidence.groups.schema.counts.fail>0);
+  assert.equal(failed.registry.assets[0].destinationVerifiedSha256,originalHash);
+  const state=scan(root,failed.registry,failed.evidence).assets[0];assert.equal(state.progress,'COPIED');for(const w of ['DESTINATION_CHANGED','TEST_FAILED','VERIFICATION_STALE'])assert.ok(state.warnings.includes(w));assert.equal(state.skip,false);assert.equal(state.approved,false);
+  put(root,schema,original);const restored=verify(root,failed.registry,failed.evidence);assert.equal(restored.evidence.groups.schema.outcome,'PASS',restored.evidence.groups.schema.log);
+  fs.appendFileSync(path.join(root,'Frwk_Units/DB/Builder/src/portable-data-definition-core.mjs'),'\n// fixture-only dependency change\n');
+  const stale=scan(root,restored.registry,restored.evidence).assets[0];assert.equal(stale.progress,'COPIED');assert.ok(stale.warnings.includes('VERIFICATION_STALE'));assert.equal(stale.skip,false);assert.equal(restored.registry.assets[0].approval.approved,false);
+ }finally{
+  if(path.dirname(path.resolve(root))!==parent||!path.basename(root).startsWith('member-schema-verification-'))throw Error('UNSAFE_FIXTURE_CLEANUP');
+  fs.rmSync(root,{recursive:true,force:true});
+ }
+});

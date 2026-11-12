@@ -8,7 +8,7 @@
 | core-flow | Frwk_Units/Core/src/Flow.js | Core | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | core-storage-id | Frwk_Units/Core/src/StorageId.js | Core | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | member-object | Frwk_Units/Member/src/MemberObject.js | Member | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
-| member-schema | Frwk_Units/Member/schema/Member.yml | Member | COPIED | ACTIVE | TEST_MISSING | CURRENT_VERIFICATION_REQUIRED, EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| member-schema | Frwk_Units/Member/schema/Member.yml | Member | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | time-context | Frwk_Units/TimeTrip/src/SystemContext.js | TimeTrip | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | time-logic | Frwk_Units/TimeTrip/src/TimeTripCore.js | TimeTrip | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | time-application | Frwk_Units/TimeTrip/src/TimeApplicationCore.js | TimeTrip | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |

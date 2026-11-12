@@ -11,7 +11,8 @@ export const allowedTests=new Set([
  'Migration/tests/assets/core.test.cjs','Migration/tests/assets/member.test.cjs','Migration/tests/assets/timetrip.test.cjs',
  'Frwk_Units/Workflow/tests/workflow.test.cjs',
  'Frwk_Units/TimeTrip/tests/timetrip.test.cjs',
- 'Migration/tests/public-api.test.cjs'
+ 'Migration/tests/public-api.test.cjs',
+ 'Frwk_Units/Member/tests/schema.test.mjs'
 ]);
 export function runGroup(root,g){
   if(g.kind!=='node-test'||g.tests.some(p=>!allowedTests.has(p)))throw Error('VERIFICATION_NOT_ALLOWED');

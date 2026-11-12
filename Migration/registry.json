@@ -151,6 +151,26 @@
           "target": "Frwk_Units/Core"
         }
       ]
+    },
+    {
+      "id": "member-schema",
+      "kind": "node-test",
+      "persistent": true,
+      "expectedTests": 17,
+      "tests": [
+        "Frwk_Units/Member/tests/schema.test.mjs"
+      ],
+      "inputs": [
+        "Frwk_Units/Member/schema/Member.yml",
+        "Frwk_Units/Member/src",
+        "Frwk_Units/Member/package.json",
+        "Frwk_Units/Member/package-lock.json",
+        "Frwk_Units/Member/node_modules/@arch026/core",
+        "Frwk_Units/Core/src",
+        "Frwk_Units/Core/package.json",
+        "Frwk_Units/DB/Builder/src",
+        "Frwk_Units/DB/Builder/package.json"
+      ]
     }
   ],
   "assets": [
@@ -293,12 +313,14 @@
       "destination": "Frwk_Units/Member/schema/Member.yml",
       "unit": "Member",
       "sourceBaselineSha256": "1011f03560c36a7283ce4f4a8d17bd45f9b81a5940b9573ebc0a6cc07eb119da",
-      "destinationVerifiedSha256": null,
-      "verifications": [],
+      "destinationVerifiedSha256": "1011f03560c36a7283ce4f4a8d17bd45f9b81a5940b9573ebc0a6cc07eb119da",
+      "verifications": [
+        "member-schema"
+      ],
       "decision": {
         "analyzed": true,
         "disposition": "ACTIVE",
-        "notes": "Copied schema; existing minimal Member object tests do not verify this schema."
+        "notes": "Dedicated tests cover the checked-in Portable Definition YAML subset, 21 field/type/group regression, key and source mappings, local renderer roundtrip, negative definitions and the shared Member public contract. member_name versus name mapping and business format/range policy remain undefined; no business rules added."
       },
       "approval": {
         "approved": false,

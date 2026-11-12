@@ -568,3 +568,51 @@ Emulatorの前提はJava 21、ローカルFirestore Emulator v1.21.0、lockfile�
 **最終判定：コミット可能（155ファイルのFramework開発基準点として）。** HEAD＋確定候補だけから、lockfileに基づく導入、主要Build・型検査、全Unit、公開API、Migration、ルート全回帰、ローカル永続化と現行配布生成を再現できた。追加実装やlockfile再生成は不要で、元への必要な反映はMember導入フラグの明文化と本監査結果の追記のみだった。未実施の外部前提・Member Schema等の未完了項目・SOURCE_MISSING 10件という独立環境の出自照合制限は、基準点の既知範囲として明示して残す。
 
 これはコミット実施の許可ではない。候補155件・保留5文書を維持し、利用者が次に明示指示したときだけ、確定一覧との照合、Stage後の差分・件数・check、コミット後の状態確認へ進む。本セッションでは元の作業ツリーにStage・Commit・Pushしていない。Migrationの26件中25 VERIFIED、Member Schema 1件未検証、承認全件false、skip 0を維持する。元のRegistry・検証証跡へ独立環境の結果を上書きしていない。
+
+## Member Schema専用検証（2026-11-12）
+
+開始時のHEADは`20067db05248f1cc13a10508ec6dc0a0399c1fd8`、main。作業ツリーは指定の保留5文書だけだった。前節の155候補監査・未コミット状態は過去の記録であり、本節の開始状態と区別する。本作業ではcommit／push／stageを行わない。
+
+### 調査結果と検証範囲
+
+Member.ymlはentity=member、version=0.1、21フィールド（string 19・number 2）、唯一のprimary_keyはmember_id。GASは01_会員マスタ、Firestoreはmembersへ対応する。requiredの明示はなく、既存変換処理では全フィールドのrequiredがfalseとなる。一方、既存Rendererは文書IDとして非空のstringを要求する。primary_keyを根拠にSchemaへrequired:trueを追加していない。
+
+従来のMemberオブジェクト試験3件はMember.ymlを解析せず、Registryのmember-schemaにもverificationsがなかったため、COPIED／TEST_MISSINGだった。今回、既存Node testとDB Builderの公開API（definition／firestore）を使う専用17件をFrwk_Units/Member/tests/schema.test.mjsへ追加した。Memberの実行時依存はCoreのままで、DB BuilderはテストCompositionから公開入口を参照する。新しいテスト基盤・YAMLライブラリ・実行時Schema Validatorは導入していない。
+
+専用試験は、現物の対応YAMLサブセット解析、entity／version／21フィールド名・型・groupの回帰、単一主キー、既存requiredの扱い、GAS／Firestoreの対応、合成recordの投影・検証・復元、任意項目の省略、公開Member APIの共通部分と差分を検証する。不正な字下げ、必須構造の欠落、重複フィールド、型の欠落、主キーなし／複数、不明group、不正な物理対応、値の型違い・非有限数、ID欠落／矛盾を拒否できることも確認する。
+
+ただし、DB Builderの既存ReaderはPortable Definition用YAMLサブセットであり、完全なYAML 1.2構文検証器ではない。既存の汎用Validatorは任意の型名を網羅的に列挙検証するものでもない。今回の現物フィールド・型は専用の回帰リストとRendererの既存契約で確認しており、未知の任意Schemaすべてを検証できるとは宣言しない。Schemaの意図的な変更時は、この回帰リストもレビューする必要がある。
+
+公開Member DTOはnameを要求するが、Schemaはmember_nameを定義する。また、DTOはstatusをstringとして要求するのに対し、Schemaにrequired指定はない。公開ID正規化には、Schema本文に表現されない文字・長さの制約もある。共通部分の有効例と現在の差分を試験で明示し、name変換、必須指定、型、業務ルールを勝手に変更していない。両契約が完全に同型であると保証するものではない。
+
+日付・月・メール・電話の形式、数値の非負・整数条件、ステータス値の列挙などは現行Member.ymlに未定義であり、今回の新しい制約にはしていない。公開DTOとの対応付け・必須性の統合と併せて、今後の設計判断事項として残す。
+
+### Migrationの統合と故障注入
+
+member-schemaグループを追加し、17件を固定allowlistへ登録した。対象Schema、専用試験、Member／Core、DB Builderのソース・公開設定・導入済み依存を検証指紋へ含める。既存の期待件数一致、失敗・SKIP 0、実行前後の入力ハッシュ一致という条件は緩和していない。資産件数は26件のままで、元のsourceBaselineと全approvalを維持する。
+
+管理試験に1件追加し、一時領域へ必要なUnit資産だけを配置して実verifierを実行した。正常SchemaでVERIFIED、不正な型へ変えたSchemaでは専用試験が実際に失敗してCOPIED／TEST_FAILED／VERIFICATION_STALEとなり、検証済みSHAは以前の値から更新されない。元に戻して再検証するとVERIFIEDへ戻り、その後DB Builderの依存を変更すると再び検証が失効する。実リポジトリのSchemaを故障注入で変更していない。どの段階でもCOMPLETE・skipへ昇格させない。
+
+更新前のRegistry、latest.json、status.mdは`reports/history/member-schema-before-20261112-c1224f541fc4.json`へ原文とSHA-256付きで退避した。既存のログ・証跡を削除せず、最新証跡の更新前状態を再確認できるようにした。
+
+### 今回の実行結果
+
+| コマンド | 結果 |
+|---|---|
+| npm test --prefix Frwk_Units/Member | 20 PASS（専用17＋既存3）、0 FAIL／0 SKIP |
+| npm test --prefix Migration | 最終30 PASS、0 FAIL／0 SKIP。初回の制限環境では29 PASS・junction 1 SKIPだったため、以前に許可されたローカル試験条件で再確認 |
+| npm run migration:verify --prefix Migration | 75 PASS（既存58＋Schema17）、0 FAIL／0 SKIP |
+| npm run migration:report --prefix Migration | 最新status.mdを更新 |
+| npm run migration:status --prefix Migration | 26登録・26 VERIFIED、警告なし、探索範囲内の未登録0、skip 0 |
+| npm test | ルート529 PASS、0 FAIL／0 SKIP。ルートBuildを含む |
+| node node_modules/typescript/bin/tsc -p tsconfig.prototype.json --noEmit | PASS |
+| node node_modules/typescript/bin/tsc -p Frwk_Units/Workflow/tsconfig.json --noEmit | PASS |
+| node --check（専用試験・管理試験・verifier） | PASS |
+
+Member試験20件はMigration再検証75件にも含まれ、故障注入の子試験も管理試験から実行されるため、これらを単純加算しない。故障注入の意図した失敗と復元は、管理試験の成功条件として観測したもの。実環境の検証失敗をPASSへ読み替えたものではない。Emulator・実ブラウザ・旧道場依存の統合試験・配布物再生成は、この変更範囲では実施していない。
+
+### 判定と残課題
+
+member-schemaはCOPIED／TEST_MISSINGからVERIFIEDへ移行した。Schemaの内容・SHA-256は元の`1011f03560c36a7283ce4f4a8d17bd45f9b81a5940b9573ebc0a6cc07eb119da`から不変で、専用試験のPASSと現在の入力指紋に基づく判定である。COMPLETEではなく、承認は26件すべてfalseのまま。26/26という登録資産の検証状況は、Framework全体の完成率・業務仕様の完全性を表さない。
+
+Member Schemaの「専用試験不足」は解消した。次工程では、公開DTOとのname／status／識別子の対応、業務形式・範囲制約、汎用YAML／型検証の適用範囲を必要に応じて決定する。既存のPrototype／Registry／配布境界、TimeTripの保存契約等の残課題は、本件によって解消したとは扱わない。保留5文書・旧道場・Schema業務仕様・既存公開API・既存配布アーカイブは変更していない。

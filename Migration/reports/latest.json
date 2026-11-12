@@ -4,7 +4,7 @@
     "db": {
       "persistent": true,
       "outcome": "PASS",
-      "fingerprint": "2296d67349341620448f4fc0280cbea98e37f45aedf3c977809a3a2bdc9a0a2d",
+      "fingerprint": "668f553188d2e74d353dec4bc980ff2744466a6578c15e355e49db724f404a6a",
       "inputs": {
         "runtime": "v24.16.0",
         "group": {
@@ -35,7 +35,7 @@
           "Migration/src/network-guard.cjs": "fcb91ed6ea56a2c81a17cefb0496c904d5b2a5dbbb9ccdc0938ea97d40ae6f33",
           "Migration/src/registry.mjs": "799842d79be05189195b6d92a79e2e7cec8fa8b02ea49c12d24fefab1406aee8",
           "Migration/src/scanner.mjs": "30a1acbb765161731f4b1d1bb5245dc51e1d7cac38cb0fc7398ba9a48c222c49",
-          "Migration/src/verifier.mjs": "7c82592dcc8f0fddbb42a486948b43f2432bc6ddc81bcbb46d614067c99daff6"
+          "Migration/src/verifier.mjs": "16b71d751e7c008a26dd2c4d58550d091821b9571efd9d424076872ec8f74ab7"
         }
       },
       "exitCode": 0,
@@ -46,13 +46,13 @@
         "skipped": 0
       },
       "diagnostic": null,
-      "log": "TAP version 13\n# Subtest: Portable Definition builder generates arbitrary entity artifacts\nok 1 - Portable Definition builder generates arbitrary entity artifacts\n  ---\n  duration_ms: 14.8573\n  type: 'test'\n  ...\n# Subtest: Portable Definition core transforms an arbitrary entity and Firestore collection\nok 2 - Portable Definition core transforms an arbitrary entity and Firestore collection\n  ---\n  duration_ms: 0.9932\n  type: 'test'\n  ...\n# Subtest: Portable Definition core preserves declared field types for renderers\nok 3 - Portable Definition core preserves declared field types for renderers\n  ---\n  duration_ms: 0.2113\n  type: 'test'\n  ...\n# Subtest: Portable Definition core preserves all supported semantic field groups\nok 4 - Portable Definition core preserves all supported semantic field groups\n  ---\n  duration_ms: 0.2875\n  type: 'test'\n  ...\n# Subtest: Portable Definition core defaults an omitted field group to Unclassified\nok 5 - Portable Definition core defaults an omitted field group to Unclassified\n  ---\n  duration_ms: 0.1799\n  type: 'test'\n  ...\n# Subtest: Portable Definition core rejects an unknown semantic field group\nok 6 - Portable Definition core rejects an unknown semantic field group\n  ---\n  duration_ms: 0.4579\n  type: 'test'\n  ...\n# Subtest: Portable Definition preserves explicit Firestore physical field names\nok 7 - Portable Definition preserves explicit Firestore physical field names\n  ---\n  duration_ms: 0.4032\n  type: 'test'\n  ...\n1..7\n# tests 7\n# suites 0\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 80.7613\n",
-      "recordedAt": "2026-11-10T08:22:07.740Z"
+      "log": "TAP version 13\n# Subtest: Portable Definition builder generates arbitrary entity artifacts\nok 1 - Portable Definition builder generates arbitrary entity artifacts\n  ---\n  duration_ms: 12.5255\n  type: 'test'\n  ...\n# Subtest: Portable Definition core transforms an arbitrary entity and Firestore collection\nok 2 - Portable Definition core transforms an arbitrary entity and Firestore collection\n  ---\n  duration_ms: 0.9918\n  type: 'test'\n  ...\n# Subtest: Portable Definition core preserves declared field types for renderers\nok 3 - Portable Definition core preserves declared field types for renderers\n  ---\n  duration_ms: 0.2303\n  type: 'test'\n  ...\n# Subtest: Portable Definition core preserves all supported semantic field groups\nok 4 - Portable Definition core preserves all supported semantic field groups\n  ---\n  duration_ms: 0.289\n  type: 'test'\n  ...\n# Subtest: Portable Definition core defaults an omitted field group to Unclassified\nok 5 - Portable Definition core defaults an omitted field group to Unclassified\n  ---\n  duration_ms: 0.1783\n  type: 'test'\n  ...\n# Subtest: Portable Definition core rejects an unknown semantic field group\nok 6 - Portable Definition core rejects an unknown semantic field group\n  ---\n  duration_ms: 0.4822\n  type: 'test'\n  ...\n# Subtest: Portable Definition preserves explicit Firestore physical field names\nok 7 - Portable Definition preserves explicit Firestore physical field names\n  ---\n  duration_ms: 0.4368\n  type: 'test'\n  ...\n1..7\n# tests 7\n# suites 0\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 78.0985\n",
+      "recordedAt": "2026-11-12T01:09:34.193Z"
     },
     "core": {
       "persistent": true,
       "outcome": "PASS",
-      "fingerprint": "b9c9675a5edfc2c3800635eb11da9184305d7f96caf0253ca64e6e46a3b17aca",
+      "fingerprint": "278ad43268a7a36b9932aec7e82561292331ed02636d90624cc77da6dbfa1d99",
       "inputs": {
         "runtime": "v24.16.0",
         "group": {
@@ -76,7 +76,7 @@
           "Migration/src/network-guard.cjs": "fcb91ed6ea56a2c81a17cefb0496c904d5b2a5dbbb9ccdc0938ea97d40ae6f33",
           "Migration/src/registry.mjs": "799842d79be05189195b6d92a79e2e7cec8fa8b02ea49c12d24fefab1406aee8",
           "Migration/src/scanner.mjs": "30a1acbb765161731f4b1d1bb5245dc51e1d7cac38cb0fc7398ba9a48c222c49",
-          "Migration/src/verifier.mjs": "7c82592dcc8f0fddbb42a486948b43f2432bc6ddc81bcbb46d614067c99daff6",
+          "Migration/src/verifier.mjs": "16b71d751e7c008a26dd2c4d58550d091821b9571efd9d424076872ec8f74ab7",
           "Migration/tests/assets/core.test.cjs": "c7324ee1c16d39456636f0622f10c52788042f98f7554bfa8097682c790a850a"
         }
       },
@@ -88,13 +88,13 @@
         "skipped": 0
       },
       "diagnostic": null,
-      "log": "TAP version 13\n# Subtest: Core: synchronous result remains synchronous\nok 1 - Core: synchronous result remains synchronous\n  ---\n  duration_ms: 0.8094\n  type: 'test'\n  ...\n# Subtest: Core: asynchronous result and rejected-yield propagation\nok 2 - Core: asynchronous result and rejected-yield propagation\n  ---\n  duration_ms: 0.2293\n  type: 'test'\n  ...\n# Subtest: Core: identifier validation and UTF-8 byte limit\nok 3 - Core: identifier validation and UTF-8 byte limit\n  ---\n  duration_ms: 0.482\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 56.929\n",
-      "recordedAt": "2026-11-10T08:22:07.942Z"
+      "log": "TAP version 13\n# Subtest: Core: synchronous result remains synchronous\nok 1 - Core: synchronous result remains synchronous\n  ---\n  duration_ms: 0.9185\n  type: 'test'\n  ...\n# Subtest: Core: asynchronous result and rejected-yield propagation\nok 2 - Core: asynchronous result and rejected-yield propagation\n  ---\n  duration_ms: 0.2491\n  type: 'test'\n  ...\n# Subtest: Core: identifier validation and UTF-8 byte limit\nok 3 - Core: identifier validation and UTF-8 byte limit\n  ---\n  duration_ms: 0.6131\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 70.0359\n",
+      "recordedAt": "2026-11-12T01:09:34.396Z"
     },
     "member": {
       "persistent": true,
       "outcome": "PASS",
-      "fingerprint": "ff90aa08d15b390c75d707d85ff8fb1c9e9200eaa1729b31056829f88377ef3e",
+      "fingerprint": "6ed02f9f31dc131baa889fe02ad164338d072017b0952755443a7aea05145827",
       "inputs": {
         "runtime": "v24.16.0",
         "group": {
@@ -122,13 +122,13 @@
           "Frwk_Units/Member/node_modules/@arch026/core/src/Flow.js": "10038575df090a95f245d29d72ad0dbffbd1843d36616debcf51f237f72a9c03",
           "Frwk_Units/Member/node_modules/@arch026/core/src/StorageId.js": "890425fba5bce9b24175879eb6641eaf3987d5da43e7c9c9eb911cccb0a73fc5",
           "Frwk_Units/Member/package-lock.json": "75d861684d8336f22861308e3f42f96412ecabade98509b1b9c4ab45291d18b1",
-          "Frwk_Units/Member/package.json": "c9529d97cb119f40f8e0f8a8dce9cba828ff219fb1bd49b092aac8d1e61e1faf",
+          "Frwk_Units/Member/package.json": "6032468b983aba13c54355ec0b80c17a201fd9153ee62f5e7b3702c4f6fdce67",
           "Frwk_Units/Member/src/MemberObject.js": "08551120e32f8d4562f1f5da1d5ccb283d045aa22b4bbad5b0cd223784e02bf5",
           "Migration/package.json": "e920f0ae9b118edea55a9e1b8e9d94df40b0e4709895e62a3822f48d10ef44e7",
           "Migration/src/network-guard.cjs": "fcb91ed6ea56a2c81a17cefb0496c904d5b2a5dbbb9ccdc0938ea97d40ae6f33",
           "Migration/src/registry.mjs": "799842d79be05189195b6d92a79e2e7cec8fa8b02ea49c12d24fefab1406aee8",
           "Migration/src/scanner.mjs": "30a1acbb765161731f4b1d1bb5245dc51e1d7cac38cb0fc7398ba9a48c222c49",
-          "Migration/src/verifier.mjs": "7c82592dcc8f0fddbb42a486948b43f2432bc6ddc81bcbb46d614067c99daff6",
+          "Migration/src/verifier.mjs": "16b71d751e7c008a26dd2c4d58550d091821b9571efd9d424076872ec8f74ab7",
           "Migration/tests/assets/member.test.cjs": "a792ce069169eb5edc6c093a5d8496175508c3586e0735a1c8924be6e1658e26"
         }
       },
@@ -140,13 +140,13 @@
         "skipped": 0
       },
       "diagnostic": null,
-      "log": "TAP version 13\n# Subtest: Member: installed Core dependency matches its source package\nok 1 - Member: installed Core dependency matches its source package\n  ---\n  duration_ms: 3.5819\n  type: 'test'\n  ...\n# Subtest: Member: rejects invalid identifiers and malformed document\nok 2 - Member: rejects invalid identifiers and malformed document\n  ---\n  duration_ms: 0.4293\n  type: 'test'\n  ...\n# Subtest: Member: minimal legacy object contract\nok 3 - Member: minimal legacy object contract\n  ---\n  duration_ms: 0.2588\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 55.9832\n",
-      "recordedAt": "2026-11-10T08:22:08.155Z"
+      "log": "TAP version 13\n# Subtest: Member: installed Core dependency matches its source package\nok 1 - Member: installed Core dependency matches its source package\n  ---\n  duration_ms: 5.0408\n  type: 'test'\n  ...\n# Subtest: Member: rejects invalid identifiers and malformed document\nok 2 - Member: rejects invalid identifiers and malformed document\n  ---\n  duration_ms: 0.5741\n  type: 'test'\n  ...\n# Subtest: Member: minimal legacy object contract\nok 3 - Member: minimal legacy object contract\n  ---\n  duration_ms: 0.3148\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 73.0872\n",
+      "recordedAt": "2026-11-12T01:09:34.684Z"
     },
     "time": {
       "persistent": true,
       "outcome": "PASS",
-      "fingerprint": "ffabe1217c4716c62357544b05deb5567660a4b1a02ffbe0c59102abee2f42e8",
+      "fingerprint": "9b80e3740f8a2d33f487fda2848dc8d45cce7907a3ae05489751d7c118173148",
       "inputs": {
         "runtime": "v24.16.0",
         "group": {
@@ -211,7 +211,7 @@
           "Migration/src/network-guard.cjs": "fcb91ed6ea56a2c81a17cefb0496c904d5b2a5dbbb9ccdc0938ea97d40ae6f33",
           "Migration/src/registry.mjs": "799842d79be05189195b6d92a79e2e7cec8fa8b02ea49c12d24fefab1406aee8",
           "Migration/src/scanner.mjs": "30a1acbb765161731f4b1d1bb5245dc51e1d7cac38cb0fc7398ba9a48c222c49",
-          "Migration/src/verifier.mjs": "7c82592dcc8f0fddbb42a486948b43f2432bc6ddc81bcbb46d614067c99daff6",
+          "Migration/src/verifier.mjs": "16b71d751e7c008a26dd2c4d58550d091821b9571efd9d424076872ec8f74ab7",
           "Migration/tests/assets/timetrip.test.cjs": "16cef8943ae760a6e45b2b9ce7488ef73769ccd1f305a4fc90b11106327ba457",
           "binding:Frwk_Units/TimeTrip/node_modules/@arch026/workflow": "c089b8b2607c0ee625b9975070858b4df59ecc66c426b297887e64f49a1bca53",
           "binding:Frwk_Units/TimeTrip/node_modules/@arch026/core": "74baee54ab7731d79880a80570adf836889ca20c8a83d2ad75af1be4182fd9a3"
@@ -225,13 +225,13 @@
         "skipped": 0
       },
       "diagnostic": null,
-      "log": "TAP version 13\n# Subtest: public time export resolves to renamed internal module without a legacy file\nok 1 - public time export resolves to renamed internal module without a legacy file\n  ---\n  duration_ms: 2.3365\n  type: 'test'\n  ...\n# Subtest: inherits the canonical Framework CJobForm\nok 2 - inherits the canonical Framework CJobForm\n  ---\n  duration_ms: 1.1158\n  type: 'test'\n  ...\n# Subtest: system wrappers work synchronously before Job execution\nok 3 - system wrappers work synchronously before Job execution\n  ---\n  duration_ms: 19.6336\n  type: 'test'\n  ...\n# Subtest: six phases configure and record the source, then reload from DAO\nok 4 - six phases configure and record the source, then reload from DAO\n  ---\n  duration_ms: 2.8921\n  type: 'test'\n  ...\n# Subtest: system source switch retains DEBUG and clears configured date\nok 5 - system source switch retains DEBUG and clears configured date\n  ---\n  duration_ms: 1.0294\n  type: 'test'\n  ...\n# Subtest: all existing Application APIs remain available and synchronous\nok 6 - all existing Application APIs remain available and synchronous\n  ---\n  duration_ms: 0.9423\n  type: 'test'\n  ...\n# Subtest: async DAO wrappers and Job use the existing asynchronous contract\nok 7 - async DAO wrappers and Job use the existing asynchronous contract\n  ---\n  duration_ms: 1.0897\n  type: 'test'\n  ...\n# Subtest: invalid setting fails the Job with zero writes and wrappers still work\nok 8 - invalid setting fails the Job with zero writes and wrappers still work\n  ---\n  duration_ms: 1.0983\n  type: 'test'\n  ...\n# Subtest: DAO failure does not disable read APIs\nok 9 - DAO failure does not disable read APIs\n  ---\n  duration_ms: 0.5226\n  type: 'test'\n  ...\n# Subtest: Workflow invokes TimeTrip and records DONE and normal completion\nok 10 - Workflow invokes TimeTrip and records DONE and normal completion\n  ---\n  duration_ms: 1.4827\n  type: 'test'\n  ...\n# Subtest: Workflow records invalid source as ERROR rather than completion\nok 11 - Workflow records invalid source as ERROR rather than completion\n  ---\n  duration_ms: 1.2567\n  type: 'test'\n  ...\n# Subtest: configuration is captured by value and repeat visits have separate contexts\nok 12 - configuration is captured by value and repeat visits have separate contexts\n  ---\n  duration_ms: 0.6965\n  type: 'test'\n  ...\n# Subtest: existing month and input normalization is preserved\nok 13 - existing month and input normalization is preserved\n  ---\n  duration_ms: 0.332\n  type: 'test'\n  ...\n# Subtest: TimeTrip: dependency identity and synchronous injected clock\nok 14 - TimeTrip: dependency identity and synchronous injected clock\n  ---\n  duration_ms: 2.8322\n  type: 'test'\n  ...\n# Subtest: TimeTrip: setting update and real-time restoration\nok 15 - TimeTrip: setting update and real-time restoration\n  ---\n  duration_ms: 0.5656\n  type: 'test'\n  ...\n# Subtest: TimeTrip: asynchronous DAO\nok 16 - TimeTrip: asynchronous DAO\n  ---\n  duration_ms: 0.5545\n  type: 'test'\n  ...\n# Subtest: TimeTrip: invalid input writes nothing\nok 17 - TimeTrip: invalid input writes nothing\n  ---\n  duration_ms: 0.1151\n  type: 'test'\n  ...\n1..17\n# tests 17\n# suites 0\n# pass 17\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 116.5523\n",
-      "recordedAt": "2026-11-10T08:22:08.506Z"
+      "log": "TAP version 13\n# Subtest: public time export resolves to renamed internal module without a legacy file\nok 1 - public time export resolves to renamed internal module without a legacy file\n  ---\n  duration_ms: 3.7245\n  type: 'test'\n  ...\n# Subtest: inherits the canonical Framework CJobForm\nok 2 - inherits the canonical Framework CJobForm\n  ---\n  duration_ms: 1.3512\n  type: 'test'\n  ...\n# Subtest: system wrappers work synchronously before Job execution\nok 3 - system wrappers work synchronously before Job execution\n  ---\n  duration_ms: 27.2468\n  type: 'test'\n  ...\n# Subtest: six phases configure and record the source, then reload from DAO\nok 4 - six phases configure and record the source, then reload from DAO\n  ---\n  duration_ms: 3.2476\n  type: 'test'\n  ...\n# Subtest: system source switch retains DEBUG and clears configured date\nok 5 - system source switch retains DEBUG and clears configured date\n  ---\n  duration_ms: 1.0899\n  type: 'test'\n  ...\n# Subtest: all existing Application APIs remain available and synchronous\nok 6 - all existing Application APIs remain available and synchronous\n  ---\n  duration_ms: 1.3258\n  type: 'test'\n  ...\n# Subtest: async DAO wrappers and Job use the existing asynchronous contract\nok 7 - async DAO wrappers and Job use the existing asynchronous contract\n  ---\n  duration_ms: 1.2305\n  type: 'test'\n  ...\n# Subtest: invalid setting fails the Job with zero writes and wrappers still work\nok 8 - invalid setting fails the Job with zero writes and wrappers still work\n  ---\n  duration_ms: 1.073\n  type: 'test'\n  ...\n# Subtest: DAO failure does not disable read APIs\nok 9 - DAO failure does not disable read APIs\n  ---\n  duration_ms: 0.9379\n  type: 'test'\n  ...\n# Subtest: Workflow invokes TimeTrip and records DONE and normal completion\nok 10 - Workflow invokes TimeTrip and records DONE and normal completion\n  ---\n  duration_ms: 1.7299\n  type: 'test'\n  ...\n# Subtest: Workflow records invalid source as ERROR rather than completion\nok 11 - Workflow records invalid source as ERROR rather than completion\n  ---\n  duration_ms: 1.3585\n  type: 'test'\n  ...\n# Subtest: configuration is captured by value and repeat visits have separate contexts\nok 12 - configuration is captured by value and repeat visits have separate contexts\n  ---\n  duration_ms: 0.652\n  type: 'test'\n  ...\n# Subtest: existing month and input normalization is preserved\nok 13 - existing month and input normalization is preserved\n  ---\n  duration_ms: 0.3884\n  type: 'test'\n  ...\n# Subtest: TimeTrip: dependency identity and synchronous injected clock\nok 14 - TimeTrip: dependency identity and synchronous injected clock\n  ---\n  duration_ms: 6.8979\n  type: 'test'\n  ...\n# Subtest: TimeTrip: setting update and real-time restoration\nok 15 - TimeTrip: setting update and real-time restoration\n  ---\n  duration_ms: 0.762\n  type: 'test'\n  ...\n# Subtest: TimeTrip: asynchronous DAO\nok 16 - TimeTrip: asynchronous DAO\n  ---\n  duration_ms: 0.8244\n  type: 'test'\n  ...\n# Subtest: TimeTrip: invalid input writes nothing\nok 17 - TimeTrip: invalid input writes nothing\n  ---\n  duration_ms: 0.1653\n  type: 'test'\n  ...\n1..17\n# tests 17\n# suites 0\n# pass 17\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 144.592\n",
+      "recordedAt": "2026-11-12T01:09:35.171Z"
     },
     "workflow": {
       "persistent": true,
       "outcome": "PASS",
-      "fingerprint": "11067b89160c031bde8629a19b1509787cde41ea4082cf7ab7e0f392b99333c8",
+      "fingerprint": "91e0c7f081af25384e702877f88f86a13d39b5d5c7d09c0ef5975c6f35820b82",
       "inputs": {
         "runtime": "v24.16.0",
         "group": {
@@ -278,7 +278,7 @@
           "Migration/src/network-guard.cjs": "fcb91ed6ea56a2c81a17cefb0496c904d5b2a5dbbb9ccdc0938ea97d40ae6f33",
           "Migration/src/registry.mjs": "799842d79be05189195b6d92a79e2e7cec8fa8b02ea49c12d24fefab1406aee8",
           "Migration/src/scanner.mjs": "30a1acbb765161731f4b1d1bb5245dc51e1d7cac38cb0fc7398ba9a48c222c49",
-          "Migration/src/verifier.mjs": "7c82592dcc8f0fddbb42a486948b43f2432bc6ddc81bcbb46d614067c99daff6",
+          "Migration/src/verifier.mjs": "16b71d751e7c008a26dd2c4d58550d091821b9571efd9d424076872ec8f74ab7",
           "src/prototype/definition.ts": "beea235ca29aee6570d3d6ac653e77dfa8f3af24d2b2ae51f6af1bd5bdc47e40",
           "src/prototype/job-form.ts": "a67169ab7b26042dc0f1d45659ebe02db3bd4f7a4123a7caf98340ff7b32a505",
           "src/prototype/workflow.ts": "45549657e655977507b56a858095271912bfe693bea717b4cbbeb769b0efb462"
@@ -292,13 +292,13 @@
         "skipped": 0
       },
       "diagnostic": null,
-      "log": "TAP version 13\n# Subtest: executed build matches current Unit source and build configuration\nok 1 - executed build matches current Unit source and build configuration\n  ---\n  duration_ms: 6.6375\n  type: 'test'\n  ...\n# Subtest: prepare precedes collect and is awaited\nok 2 - prepare precedes collect and is awaited\n  ---\n  duration_ms: 1.4541\n  type: 'test'\n  ...\n# Subtest: prepare failure skips work, preserves cause and cleans up\nok 3 - prepare failure skips work, preserves cause and cleans up\n  ---\n  duration_ms: 1.0064\n  type: 'test'\n  ...\n# Subtest: subclass executes one CMRP pipeline and records before publication\nok 4 - subclass executes one CMRP pipeline and records before publication\n  ---\n  duration_ms: 0.4202\n  type: 'test'\n  ...\n# Subtest: unneeded phases use base behavior without a custom runner\nok 5 - unneeded phases use base behavior without a custom runner\n  ---\n  duration_ms: 0.3704\n  type: 'test'\n  ...\n# Subtest: record completion is private until post publishes\nok 6 - record completion is private until post publishes\n  ---\n  duration_ms: 0.3463\n  type: 'test'\n  ...\n# Subtest: collect failure does not make, record or publish and always cleans up\nok 7 - collect failure does not make, record or publish and always cleans up\n  ---\n  duration_ms: 0.2925\n  type: 'test'\n  ...\n# Subtest: make failure prevents record/post and preserves failure phase\nok 8 - make failure prevents record/post and preserves failure phase\n  ---\n  duration_ms: 0.4025\n  type: 'test'\n  ...\n# Subtest: record failure leaves no recorded or published product\nok 9 - record failure leaves no recorded or published product\n  ---\n  duration_ms: 0.327\n  type: 'test'\n  ...\n# Subtest: post failure retains internal product and cleans up\nok 10 - post failure retains internal product and cleans up\n  ---\n  duration_ms: 0.3552\n  type: 'test'\n  ...\n# Subtest: cleanup-only failure fails the visit after any publication\nok 11 - cleanup-only failure fails the visit after any publication\n  ---\n  duration_ms: 0.311\n  type: 'test'\n  ...\n# Subtest: secondary cleanup failure never overwrites a non-Error primary cause\nok 12 - secondary cleanup failure never overwrites a non-Error primary cause\n  ---\n  duration_ms: 0.3222\n  type: 'test'\n  ...\n# Subtest: same Form supports parallel independent contexts and refuses context reuse\nok 13 - same Form supports parallel independent contexts and refuses context reuse\n  ---\n  duration_ms: 0.3777\n  type: 'test'\n  ...\n# Subtest: CWorkflow executes native Form directly and writes normal DONE history\nok 14 - CWorkflow executes native Form directly and writes normal DONE history\n  ---\n  duration_ms: 2.4509\n  type: 'test'\n  ...\n# Subtest: Check FALSE FALSE TRUE loop creates fresh native visit contexts\nok 15 - Check FALSE FALSE TRUE loop creates fresh native visit contexts\n  ---\n  duration_ms: 0.6939\n  type: 'test'\n  ...\n# Subtest: WAITING resumes at the next step without repeating previous Form\nok 16 - WAITING resumes at the next step without repeating previous Form\n  ---\n  duration_ms: 0.7472\n  type: 'test'\n  ...\n# Subtest: native failure keeps ERROR and FAILED with cleanup complete\nok 17 - native failure keeps ERROR and FAILED with cleanup complete\n  ---\n  duration_ms: 0.3157\n  type: 'test'\n  ...\n# Subtest: LIMIT_REACHED continues without redoing a completed Form\nok 18 - LIMIT_REACHED continues without redoing a completed Form\n  ---\n  duration_ms: 0.4272\n  type: 'test'\n  ...\n# Subtest: legacy CJob delegates without changing one-use and phase contracts\nok 19 - legacy CJob delegates without changing one-use and phase contracts\n  ---\n  duration_ms: 0.3734\n  type: 'test'\n  ...\n# Subtest: invalid native publication configuration is rejected before any RUNNING snapshot\nok 20 - invalid native publication configuration is rejected before any RUNNING snapshot\n  ---\n  duration_ms: 0.3128\n  type: 'test'\n  ...\n1..20\n# tests 20\n# suites 0\n# pass 20\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 77.5744\n",
-      "recordedAt": "2026-11-10T08:22:08.806Z"
+      "log": "TAP version 13\n# Subtest: executed build matches current Unit source and build configuration\nok 1 - executed build matches current Unit source and build configuration\n  ---\n  duration_ms: 7.9068\n  type: 'test'\n  ...\n# Subtest: prepare precedes collect and is awaited\nok 2 - prepare precedes collect and is awaited\n  ---\n  duration_ms: 1.2576\n  type: 'test'\n  ...\n# Subtest: prepare failure skips work, preserves cause and cleans up\nok 3 - prepare failure skips work, preserves cause and cleans up\n  ---\n  duration_ms: 0.6589\n  type: 'test'\n  ...\n# Subtest: subclass executes one CMRP pipeline and records before publication\nok 4 - subclass executes one CMRP pipeline and records before publication\n  ---\n  duration_ms: 0.4184\n  type: 'test'\n  ...\n# Subtest: unneeded phases use base behavior without a custom runner\nok 5 - unneeded phases use base behavior without a custom runner\n  ---\n  duration_ms: 0.2695\n  type: 'test'\n  ...\n# Subtest: record completion is private until post publishes\nok 6 - record completion is private until post publishes\n  ---\n  duration_ms: 0.3287\n  type: 'test'\n  ...\n# Subtest: collect failure does not make, record or publish and always cleans up\nok 7 - collect failure does not make, record or publish and always cleans up\n  ---\n  duration_ms: 0.2727\n  type: 'test'\n  ...\n# Subtest: make failure prevents record/post and preserves failure phase\nok 8 - make failure prevents record/post and preserves failure phase\n  ---\n  duration_ms: 0.3205\n  type: 'test'\n  ...\n# Subtest: record failure leaves no recorded or published product\nok 9 - record failure leaves no recorded or published product\n  ---\n  duration_ms: 0.2697\n  type: 'test'\n  ...\n# Subtest: post failure retains internal product and cleans up\nok 10 - post failure retains internal product and cleans up\n  ---\n  duration_ms: 0.3566\n  type: 'test'\n  ...\n# Subtest: cleanup-only failure fails the visit after any publication\nok 11 - cleanup-only failure fails the visit after any publication\n  ---\n  duration_ms: 0.6476\n  type: 'test'\n  ...\n# Subtest: secondary cleanup failure never overwrites a non-Error primary cause\nok 12 - secondary cleanup failure never overwrites a non-Error primary cause\n  ---\n  duration_ms: 0.5221\n  type: 'test'\n  ...\n# Subtest: same Form supports parallel independent contexts and refuses context reuse\nok 13 - same Form supports parallel independent contexts and refuses context reuse\n  ---\n  duration_ms: 0.4208\n  type: 'test'\n  ...\n# Subtest: CWorkflow executes native Form directly and writes normal DONE history\nok 14 - CWorkflow executes native Form directly and writes normal DONE history\n  ---\n  duration_ms: 2.3652\n  type: 'test'\n  ...\n# Subtest: Check FALSE FALSE TRUE loop creates fresh native visit contexts\nok 15 - Check FALSE FALSE TRUE loop creates fresh native visit contexts\n  ---\n  duration_ms: 0.731\n  type: 'test'\n  ...\n# Subtest: WAITING resumes at the next step without repeating previous Form\nok 16 - WAITING resumes at the next step without repeating previous Form\n  ---\n  duration_ms: 0.7188\n  type: 'test'\n  ...\n# Subtest: native failure keeps ERROR and FAILED with cleanup complete\nok 17 - native failure keeps ERROR and FAILED with cleanup complete\n  ---\n  duration_ms: 0.3149\n  type: 'test'\n  ...\n# Subtest: LIMIT_REACHED continues without redoing a completed Form\nok 18 - LIMIT_REACHED continues without redoing a completed Form\n  ---\n  duration_ms: 0.4744\n  type: 'test'\n  ...\n# Subtest: legacy CJob delegates without changing one-use and phase contracts\nok 19 - legacy CJob delegates without changing one-use and phase contracts\n  ---\n  duration_ms: 0.4061\n  type: 'test'\n  ...\n# Subtest: invalid native publication configuration is rejected before any RUNNING snapshot\nok 20 - invalid native publication configuration is rejected before any RUNNING snapshot\n  ---\n  duration_ms: 0.3105\n  type: 'test'\n  ...\n1..20\n# tests 20\n# suites 0\n# pass 20\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 87.2634\n",
+      "recordedAt": "2026-11-12T01:09:35.486Z"
     },
     "public-api": {
       "persistent": true,
       "outcome": "PASS",
-      "fingerprint": "931e74113c1a14c070adafa9e890c8df9fd7a6abbbdbe9a753bb8425b244d6b6",
+      "fingerprint": "787bd67f370866fc52dede1ca6e4b5f767158990a7164e77295f03d250112a0f",
       "inputs": {
         "runtime": "v24.16.0",
         "group": {
@@ -345,7 +345,7 @@
           "Frwk_Units/DB/Builder/src/portable-data-definition-builder.mjs": "aebcbbfd0b1968a11de2895da57f88481046294289ce7f1fe0b3e62255dfcb88",
           "Frwk_Units/DB/Builder/src/portable-data-definition-core.mjs": "9ea44062bd1f50c4e411e53e084111dec6b58193c4922a2026f7838a08bdd179",
           "Frwk_Units/DB/Builder/src/Schema_Renderer_Firestore.js": "2a0248a4c583a1afff152e2af2e6530e96e5947b9a7896650f0d393f7a7affa1",
-          "Frwk_Units/Member/package.json": "c9529d97cb119f40f8e0f8a8dce9cba828ff219fb1bd49b092aac8d1e61e1faf",
+          "Frwk_Units/Member/package.json": "6032468b983aba13c54355ec0b80c17a201fd9153ee62f5e7b3702c4f6fdce67",
           "Frwk_Units/Member/src/MemberObject.js": "08551120e32f8d4562f1f5da1d5ccb283d045aa22b4bbad5b0cd223784e02bf5",
           "Frwk_Units/TimeTrip/package.json": "79dc5737d30b539ba87763e30fa0a40ff7f0d760d59bb1863b4259736e47e055",
           "Frwk_Units/TimeTrip/src/SystemContext.js": "0610346a80e9d8c4b6d25ea46b3312bdcc17f2471d38f94513fef1711e598dfa",
@@ -370,7 +370,7 @@
           "Migration/src/network-guard.cjs": "fcb91ed6ea56a2c81a17cefb0496c904d5b2a5dbbb9ccdc0938ea97d40ae6f33",
           "Migration/src/registry.mjs": "799842d79be05189195b6d92a79e2e7cec8fa8b02ea49c12d24fefab1406aee8",
           "Migration/src/scanner.mjs": "30a1acbb765161731f4b1d1bb5245dc51e1d7cac38cb0fc7398ba9a48c222c49",
-          "Migration/src/verifier.mjs": "7c82592dcc8f0fddbb42a486948b43f2432bc6ddc81bcbb46d614067c99daff6",
+          "Migration/src/verifier.mjs": "16b71d751e7c008a26dd2c4d58550d091821b9571efd9d424076872ec8f74ab7",
           "Migration/tests/public-api.test.cjs": "907d5bc26b7658288c71e5e159eff03700fa692937ed79e711167ef80c62c6b0",
           "Migration/tools/inspect-api.cjs": "ca7dedde60f29ca8e844a684690e61ad509a3def8fd25bcf0631133da72c58bd",
           "node_modules/typescript/lib/typescript.js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
@@ -387,8 +387,68 @@
         "skipped": 0
       },
       "diagnostic": null,
-      "log": "TAP version 13\n# Subtest: Core public subpaths work and private module paths stay closed\nok 1 - Core public subpaths work and private module paths stay closed\n  ---\n  duration_ms: 7.5489\n  type: 'test'\n  ...\n# Subtest: Member public root preserves object contract\nok 2 - Member public root preserves object contract\n  ---\n  duration_ms: 6.3131\n  type: 'test'\n  ...\n# Subtest: Workflow public entries share class identity and execute a subclass\nok 3 - Workflow public entries share class identity and execute a subclass\n  ---\n  duration_ms: 11.3412\n  type: 'test'\n  ...\n# Subtest: TimeTrip public Application and date Wrapper work without running the Job\nok 4 - TimeTrip public Application and date Wrapper work without running the Job\n  ---\n  duration_ms: 34.1542\n  type: 'test'\n  ...\n# Subtest: TimeTrip public context and functions retain async DAO boundary\nok 5 - TimeTrip public context and functions retain async DAO boundary\n  ---\n  duration_ms: 1.3744\n  type: 'test'\n  ...\n# Subtest: DB Builder public ESM/CJS entries and legacy file path resolve to the same implementation\nok 6 - DB Builder public ESM/CJS entries and legacy file path resolve to the same implementation\n  ---\n  duration_ms: 8.0181\n  type: 'test'\n  ...\n# Subtest: all five source Units have declared acyclic public dependencies\nok 7 - all five source Units have declared acyclic public dependencies\n  ---\n  duration_ms: 88.8979\n  type: 'test'\n  ...\n# Subtest: inspector rejects cross-Unit private imports, cycles and broken exports\nok 8 - inspector rejects cross-Unit private imports, cycles and broken exports\n  ---\n  duration_ms: 23.7268\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 423.6253\n",
-      "recordedAt": "2026-11-10T08:22:09.484Z"
+      "log": "TAP version 13\n# Subtest: Core public subpaths work and private module paths stay closed\nok 1 - Core public subpaths work and private module paths stay closed\n  ---\n  duration_ms: 12.0553\n  type: 'test'\n  ...\n# Subtest: Member public root preserves object contract\nok 2 - Member public root preserves object contract\n  ---\n  duration_ms: 5.8436\n  type: 'test'\n  ...\n# Subtest: Workflow public entries share class identity and execute a subclass\nok 3 - Workflow public entries share class identity and execute a subclass\n  ---\n  duration_ms: 14.9376\n  type: 'test'\n  ...\n# Subtest: TimeTrip public Application and date Wrapper work without running the Job\nok 4 - TimeTrip public Application and date Wrapper work without running the Job\n  ---\n  duration_ms: 42.7718\n  type: 'test'\n  ...\n# Subtest: TimeTrip public context and functions retain async DAO boundary\nok 5 - TimeTrip public context and functions retain async DAO boundary\n  ---\n  duration_ms: 1.7228\n  type: 'test'\n  ...\n# Subtest: DB Builder public ESM/CJS entries and legacy file path resolve to the same implementation\nok 6 - DB Builder public ESM/CJS entries and legacy file path resolve to the same implementation\n  ---\n  duration_ms: 10.8534\n  type: 'test'\n  ...\n# Subtest: all five source Units have declared acyclic public dependencies\nok 7 - all five source Units have declared acyclic public dependencies\n  ---\n  duration_ms: 95.7737\n  type: 'test'\n  ...\n# Subtest: inspector rejects cross-Unit private imports, cycles and broken exports\nok 8 - inspector rejects cross-Unit private imports, cycles and broken exports\n  ---\n  duration_ms: 46.4553\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 534.0482\n",
+      "recordedAt": "2026-11-12T01:09:36.349Z"
+    },
+    "member-schema": {
+      "persistent": true,
+      "outcome": "PASS",
+      "fingerprint": "9b1592c059c31189fc9648b5547c85757c2e72eace02eba2247827fa3b415af9",
+      "inputs": {
+        "runtime": "v24.16.0",
+        "group": {
+          "id": "member-schema",
+          "kind": "node-test",
+          "persistent": true,
+          "expectedTests": 17,
+          "tests": [
+            "Frwk_Units/Member/tests/schema.test.mjs"
+          ],
+          "inputs": [
+            "Frwk_Units/Member/schema/Member.yml",
+            "Frwk_Units/Member/src",
+            "Frwk_Units/Member/package.json",
+            "Frwk_Units/Member/package-lock.json",
+            "Frwk_Units/Member/node_modules/@arch026/core",
+            "Frwk_Units/Core/src",
+            "Frwk_Units/Core/package.json",
+            "Frwk_Units/DB/Builder/src",
+            "Frwk_Units/DB/Builder/package.json"
+          ]
+        },
+        "files": {
+          "Frwk_Units/Core/package.json": "43a33c6a60a80c397bafc32a26bc340864658ebf7235f0e6c4252abcf007459a",
+          "Frwk_Units/Core/src/Flow.js": "10038575df090a95f245d29d72ad0dbffbd1843d36616debcf51f237f72a9c03",
+          "Frwk_Units/Core/src/StorageId.js": "890425fba5bce9b24175879eb6641eaf3987d5da43e7c9c9eb911cccb0a73fc5",
+          "Frwk_Units/DB/Builder/package.json": "68017d6adc43d23e779ba6d968bf8b27c9c7373500ac089d042d029df5b87881",
+          "Frwk_Units/DB/Builder/src/portable-data-definition-builder.mjs": "aebcbbfd0b1968a11de2895da57f88481046294289ce7f1fe0b3e62255dfcb88",
+          "Frwk_Units/DB/Builder/src/portable-data-definition-core.mjs": "9ea44062bd1f50c4e411e53e084111dec6b58193c4922a2026f7838a08bdd179",
+          "Frwk_Units/DB/Builder/src/Schema_Renderer_Firestore.js": "2a0248a4c583a1afff152e2af2e6530e96e5947b9a7896650f0d393f7a7affa1",
+          "Frwk_Units/Member/node_modules/@arch026/core/package.json": "43a33c6a60a80c397bafc32a26bc340864658ebf7235f0e6c4252abcf007459a",
+          "Frwk_Units/Member/node_modules/@arch026/core/src/Flow.js": "10038575df090a95f245d29d72ad0dbffbd1843d36616debcf51f237f72a9c03",
+          "Frwk_Units/Member/node_modules/@arch026/core/src/StorageId.js": "890425fba5bce9b24175879eb6641eaf3987d5da43e7c9c9eb911cccb0a73fc5",
+          "Frwk_Units/Member/package-lock.json": "75d861684d8336f22861308e3f42f96412ecabade98509b1b9c4ab45291d18b1",
+          "Frwk_Units/Member/package.json": "6032468b983aba13c54355ec0b80c17a201fd9153ee62f5e7b3702c4f6fdce67",
+          "Frwk_Units/Member/schema/Member.yml": "1011f03560c36a7283ce4f4a8d17bd45f9b81a5940b9573ebc0a6cc07eb119da",
+          "Frwk_Units/Member/src/MemberObject.js": "08551120e32f8d4562f1f5da1d5ccb283d045aa22b4bbad5b0cd223784e02bf5",
+          "Frwk_Units/Member/tests/schema.test.mjs": "57117cb1b49c8d28d6883c87d660a2f4f4edd10e942859ccd989b5b84a5c47f4",
+          "Migration/package.json": "e920f0ae9b118edea55a9e1b8e9d94df40b0e4709895e62a3822f48d10ef44e7",
+          "Migration/src/network-guard.cjs": "fcb91ed6ea56a2c81a17cefb0496c904d5b2a5dbbb9ccdc0938ea97d40ae6f33",
+          "Migration/src/registry.mjs": "799842d79be05189195b6d92a79e2e7cec8fa8b02ea49c12d24fefab1406aee8",
+          "Migration/src/scanner.mjs": "30a1acbb765161731f4b1d1bb5245dc51e1d7cac38cb0fc7398ba9a48c222c49",
+          "Migration/src/verifier.mjs": "16b71d751e7c008a26dd2c4d58550d091821b9571efd9d424076872ec8f74ab7"
+        }
+      },
+      "exitCode": 0,
+      "counts": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0,
+        "skipped": 0
+      },
+      "diagnostic": null,
+      "log": "TAP version 13\n# Subtest: Member YAML parses with the existing supported Portable Definition grammar\nok 1 - Member YAML parses with the existing supported Portable Definition grammar\n  ---\n  duration_ms: 2.6839\n  type: 'test'\n  ...\n# Subtest: all 21 declared fields retain their names, scalar types and semantic groups\nok 2 - all 21 declared fields retain their names, scalar types and semantic groups\n  ---\n  duration_ms: 0.5017\n  type: 'test'\n  ...\n# Subtest: primary-key identity is preserved without inventing required flags\nok 3 - primary-key identity is preserved without inventing required flags\n  ---\n  duration_ms: 0.68\n  type: 'test'\n  ...\n# Subtest: GAS and Firestore mappings preserve the actual definition and every field\nok 4 - GAS and Firestore mappings preserve the actual definition and every field\n  ---\n  duration_ms: 0.7641\n  type: 'test'\n  ...\n# Subtest: a fully populated synthetic record roundtrips through the existing renderer\nok 5 - a fully populated synthetic record roundtrips through the existing renderer\n  ---\n  duration_ms: 0.9339\n  type: 'test'\n  ...\n# Subtest: undeclared mandatory fields are not added: optional omissions and nulls remain optional\nok 6 - undeclared mandatory fields are not added: optional omissions and nulls remain optional\n  ---\n  duration_ms: 0.4465\n  type: 'test'\n  ...\n# Subtest: the public Member API agrees on shared member_id and status scalar values\nok 7 - the public Member API agrees on shared member_id and status scalar values\n  ---\n  duration_ms: 0.6011\n  type: 'test'\n  ...\n# Subtest: schema member_name is not silently remapped to the public API name field\nok 8 - schema member_name is not silently remapped to the public API name field\n  ---\n  duration_ms: 0.9726\n  type: 'test'\n  ...\n# Subtest: the public DTO status requirement is not silently added to the schema\nok 9 - the public DTO status requirement is not silently added to the schema\n  ---\n  duration_ms: 1.0392\n  type: 'test'\n  ...\n# Subtest: unsupported malformed field indentation is rejected by the current YAML reader\nok 10 - unsupported malformed field indentation is rejected by the current YAML reader\n  ---\n  duration_ms: 0.2826\n  type: 'test'\n  ...\n# Subtest: missing entity, version or fields is rejected by the existing definition validator\nok 11 - missing entity, version or fields is rejected by the existing definition validator\n  ---\n  duration_ms: 0.6016\n  type: 'test'\n  ...\n# Subtest: duplicate field names and missing field types are rejected\nok 12 - duplicate field names and missing field types are rejected\n  ---\n  duration_ms: 0.7359\n  type: 'test'\n  ...\n# Subtest: zero or multiple primary keys are rejected\nok 13 - zero or multiple primary keys are rejected\n  ---\n  duration_ms: 0.3713\n  type: 'test'\n  ...\n# Subtest: unknown semantic groups are rejected\nok 14 - unknown semantic groups are rejected\n  ---\n  duration_ms: 0.4934\n  type: 'test'\n  ...\n# Subtest: missing Firestore collection and invalid declared GAS sheet mappings are rejected\nok 15 - missing Firestore collection and invalid declared GAS sheet mappings are rejected\n  ---\n  duration_ms: 0.8783\n  type: 'test'\n  ...\n# Subtest: record values incompatible with the declared string/finite-number types are rejected\nok 16 - record values incompatible with the declared string/finite-number types are rejected\n  ---\n  duration_ms: 1.0205\n  type: 'test'\n  ...\n# Subtest: missing identifiers and contradictory physical identifier values are rejected\nok 17 - missing identifiers and contradictory physical identifier values are rejected\n  ---\n  duration_ms: 1.0525\n  type: 'test'\n  ...\n1..17\n# tests 17\n# suites 0\n# pass 17\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 86.5354\n",
+      "recordedAt": "2026-11-12T01:09:36.651Z"
     }
   }
 }

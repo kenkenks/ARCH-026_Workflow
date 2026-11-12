@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@arch026/core": "file:../Core"
+  },
+  "scripts": {
+    "test": "node --test tests/schema.test.mjs ../../Migration/tests/assets/member.test.cjs"
   }
 }
