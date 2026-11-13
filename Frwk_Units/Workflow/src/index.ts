@@ -6,3 +6,5 @@ export * from './WorkflowRegistry';
 export * from './WorkflowBuilder';
 export {ArtifactManager} from './ArtifactManager';
 export type {ArtifactReadPort} from './CJobForm';
+export {ARTIFACT_SNAPSHOT_FORMAT_VERSION,ARTIFACT_SNAPSHOT_CODEC_VERSION,validateArtifactSnapshot} from './ArtifactSnapshot';
+export type {ArtifactSnapshot,EncodedArtifactValue} from './ArtifactSnapshot';

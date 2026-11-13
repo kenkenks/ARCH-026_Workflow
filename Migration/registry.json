@@ -114,7 +114,7 @@
         "src/prototype/definition.ts",
         "Frwk_Units/Workflow/tests"
       ],
-      "expectedTests": 46
+      "expectedTests": 78
     },
     {
       "id": "public-api",
@@ -481,7 +481,7 @@
       "destination": "Frwk_Units/Workflow/src/index.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "3eeb96fbf0bffbc252c93abc4deac2efc96ac566dcc102c3d57ad827a191d639",
+      "destinationVerifiedSha256": "c0f370f101160645a7f980089f6a6a4eda166ffdc42a04a8be899e6c5cfb1cf9",
       "verifications": [
         "workflow"
       ],
@@ -504,7 +504,7 @@
       "destination": "Frwk_Units/Workflow/tests/workflow.test.cjs",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "5d5e44733484ff7439ed37ff28a87b4f7671f1fbebbafa85cf17ad2772ae5596",
+      "destinationVerifiedSha256": "2f4de83e1b6942087833d5a0b2799c81dc78bf64b964dec690441689cee9bcf2",
       "verifications": [
         "workflow"
       ],
@@ -527,7 +527,7 @@
       "destination": "Frwk_Units/Workflow/docs/README.md",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "31439306d0887c05cc4336c597342a8ef0253117f3626fcc1fa3de8dc1d7c183",
+      "destinationVerifiedSha256": "360f238d71a739215c4d7f727b0da4452c09ab6d3910b666b973336f1c67c735",
       "verifications": [
         "workflow"
       ],
@@ -881,7 +881,7 @@
       "destination": "Frwk_Units/Workflow/src/ArtifactManager.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "20fbeebe9751299c14dce029103a6ff2d9ce16d2181c8d16de1bd0372b8dcaa6",
+      "destinationVerifiedSha256": "5514c4dc01227cd8cf004a6656aa9ce840b6d06ce96e2a081a904cfc3f400d4c",
       "verifications": [
         "workflow"
       ],
@@ -912,6 +912,52 @@
         "analyzed": true,
         "disposition": "ACTIVE",
         "notes": "Memory artifact Stage 1: per-run shelves and native Context contracts; no persistence schema or COMPLETE approval."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-ArtifactSnapshot",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/src/ArtifactSnapshot.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "f78b229cb75a014629ed7ef9b6da8c369f073a5712e017551726bb8336d1a8b8",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Stage 2-1 Memory all-box Snapshot and typed JSON Codec. No SQLite or resume integration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-tests-artifact-snapshot",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/tests/artifact-snapshot.test.cjs",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "aa42d45a5aa1aed3bfbb5628ee78e405eec1aca188be6849cd88805155c6b93f",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Stage 2-1 Memory all-box Snapshot and typed JSON Codec. No SQLite or resume integration."
       },
       "approval": {
         "approved": false,

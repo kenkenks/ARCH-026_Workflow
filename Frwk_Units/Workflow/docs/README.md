@@ -293,3 +293,73 @@ Unitは旧28件＋新18件の46 PASS。Definition・CMRP・Factory・SQLite・WA
 後続課題は成果物の永続化・再起動復元、旧構造型Formへの名前付き読取対応である。Event機構・postとの正式な関係・Diagnosisの6工程対応等の従来課題は未変更。
 
 Migration初回検証では別プロセス復元拒否試験が既存の子プロセス禁止ガードによりFAILとなった。ガードは変更せず、この1件を通常の配布試験へ移した。初回証跡はMigration/reports/history/artifact-stage1-first-verification.jsonに保持し、最新再検証と区別する。
+
+## Artifact Snapshot Stage 2-1（2026-11-13）
+
+Stage 1のMemory管理に、全箱SnapshotとCodecを追加した。SQLite保存・Workflow再開接続は未実装のままである。CWorkflow、CJobForm、CMRP6工程、executeの戻り値は変更していない。
+
+### 正式API
+
+- `manager.createSnapshot(): ArtifactSnapshot`
+- `ArtifactManager.fromSnapshot(input: unknown, declaredBoxes?: readonly string[]): ArtifactManager`
+- `validateArtifactSnapshot(input: unknown): ArtifactSnapshot`
+- 型：ArtifactSnapshot、EncodedArtifactValue
+- 定数：ARTIFACT_SNAPSHOT_FORMAT_VERSION、ARTIFACT_SNAPSHOT_CODEC_VERSION
+
+既存hasBox／reader／shelf／readPortは維持する。fromSnapshotはインプレースrestoreSnapshotの代わりに、全検証後に新しいManagerを返す。失敗時に既存Managerや入力Snapshotを変更しない。宣言箱の引数を指定した場合、default以外の箱集合を完全一致で検証する。Definition ID／Version照合は本APIの責務ではない。
+
+復元ManagerはrunId未結合であり、Stage 1のassertResumeによる拒否を解除しない。SnapshotにはrunId・Definition・Lease・Workflow履歴を含めない。これらとの結合・検証済み再開はStage 2-2の対象である。
+
+### Snapshot形式
+
+```json
+{
+  "formatVersion": "artifact-snapshot/1",
+  "codecVersion": "artifact-json/1",
+  "boxes": [
+    {"name":"default","entries":[
+      {"key":"applicant","encodedValue":{"type":"string","value":"山田"}},
+      {"key":"unset","encodedValue":{"type":"undefined"}}
+    ]},
+    {"name":"review","entries":[]}
+  ]
+}
+```
+
+全箱・空箱を含み、default必須。箱名とキーを辞書順（UTF-16コード単位の比較）で正規化する。オブジェクトのプロパティも同様に正規化し、配列順は維持する。同じ現在値から同じJSONを生成する。未登録キーはentryなし、登録済みundefinedは明示タグで区別する。
+
+EncodedArtifactValueは次の再帰的な判別共用体である。
+
+- `{type: 'undefined'}`／`{type: 'null'}`
+- `{type: 'boolean', value: boolean}`／`{type: 'string', value: string}`
+- `{type: 'number', value: 有限number | '-0'}`（負のゼロだけ文字列タグ）
+- `{type: 'array', value: EncodedArtifactValue[]}`
+- `{type: 'object', value: {key: string, value: EncodedArtifactValue}[]}`
+
+概念案のtype=jsonではなく、全階層を型付きにして入れ子のundefined等のJSON変換損失とタグ衝突を防ぐ。NaN／Infinity／BigInt／Date／Map／Set／Function／Symbol／循環参照・非対応オブジェクトを拒否する。Codec入力の疎配列、余分な配列プロパティ、accessor、Symbolキー、非列挙プロパティも拒否する。Snapshot内の未知フィールド、重複箱／キー、不明Version、不正タグも拒否する。
+
+復元オブジェクトはObject.definePropertyで自有データプロパティを構築する。__proto__／constructor／prototypeもsetterとして実行せず、データとして保持する。深さ128、単一値の探索100000ノード、各配列100000要素、Snapshot全体100000entryを上限とする。入力getterやtoJSONはCodecから呼び出さない。
+
+既存ShelfのstructuredClone契約は維持する。SnapshotはShelfが現に保持する値を符号化するため、put時の既存structuredCloneによる変換まで逆算するものではない。Memoryでは扱えてもCodec非対応の値が残る場合、Snapshot生成を失敗させる。
+
+### 所有Shelfと外部共有Shelf
+
+Manager所有のShelfは既存Memory Shelfを利用し、成功したputのキーを管理する。値はShelfから読み、Snapshot側と参照を分離する。明示注入したdefault Shelfは、空の場合や既存Memory Shelfの場合も、外部共有ShelfとしてSnapshot生成時にARTIFACT_SNAPSHOT_EXTERNAL_SHELFで拒否する。外部Shelfの内部Mapを探索せず、通常の共有Memory動作は維持する。
+
+### 配布・検証
+
+正式ルートでAPI・型を公開し、独立パッケージ展開環境でJSON往復・型利用を確認する。旧配布生成器はArtifactSnapshot内部モジュールを収録する。保全済みframework.6等を上書きせず、新候補framework.7を使用する。正式Unitの既存バージョンと依存設定は変更していない。
+
+専用20試験＋既存46試験のUnit計66件を実行する。Migrationの既存32資産を保全し、新しいCodecと専用試験をNEW登録する。最新検証・指紋はMigration/reports/latest.json、状態はstatus.mdを参照する。COMPLETE承認は行わない。
+
+### Stage 2-1 入力検証の安全性修正（2026-11-13）
+
+最終レビューで、配列サブクラスのmap getterが呼び出され、Snapshotが受理される欠陥を確認した。従来の66 PASSや34 VERIFIEDはこの欠陥を検出していなかった検証履歴として残す。
+
+修正後は、入力配列をArray.prototype直下の通常配列に限定し、length・各インデックスの自有データ記述子を確認する。入力のmap／forEach等のメソッド・iterator・インデックスgetterを利用しない。プレーン／null-prototypeオブジェクトも、反射で取得した自有データ記述子から一時データへ取り込み、元入力のプロパティを直接読まない。各階層のアクセサ、非標準プロトタイプ、配列サブクラスは拒否する。Codecの入れ子構造と、fromSnapshotの任意declaredBoxes引数も同じ境界で検証する。
+
+fromSnapshotは検証後の独立した正規化データだけで復元し、元Snapshotのgetterやiteratorを参照しない。既存Managerは変更せず、復元品はrunId未結合のまま。Snapshot／CodecのVersion・公開API・undefined／負のゼロ表現・CMRP・Workflow制御は変更しない。
+
+Proxyはサポート対象外である。getPrototypeOf／ownKeys／getOwnPropertyDescriptor自体がProxy trapを実行し得るため、任意のProxyについて副作用ゼロや必ず拒否できることは保証しない。透過的Proxyが通過する場合もある。通常のJSON.parse結果と通常のデータオブジェクト・配列が入力契約であり、本検証は不正コードのsandboxではない。
+
+安全性12試験を既存Snapshot専用ファイルへ追加し、getter呼出し回数0、継承iterator非実行、入れ子アクセサ、宣言リスト、Factoryの非破壊性、正常往復、参照独立性を検証する。Proxyの反射trapが発生し得ることも明示的に試験する。独立パッケージでもmap getterの非実行を確認する。保全済みframework.7を上書きせず、配布試験の候補はframework.8へ更新する。

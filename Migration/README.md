@@ -682,3 +682,35 @@ Migration初回検証では別プロセス復元拒否試験が既存の子プ�
 今回の最終状態は32登録／32 VERIFIED、警告0、未登録0、COMPLETE承認0。Migration資産検証は7グループ101 PASS（DB7、Core3、Member3、TimeTrip17、Workflow46、公開API8、Member Schema17）。Migration管理30 PASS、関連回帰181 PASS、配布6 PASS、ルート全回帰541 PASS。Build・Unit Build・両TypeScript型検査・変更JS構文検査・git diff --checkもPASS。重複する試験は単純加算しない。初回のMigration検証FAILは上記保存証跡に保持し、最終試験のFAIL／SKIPは0。Firestore Emulator試験は今回対象外で未実施。
 
 開始時HEAD f2b3e6b1da3827c861ed3a477bfc166af059724aを維持し、Stageは空。保留5文書と既存配布10版（tgz・記録各10ファイル）のSHAが開始時と一致することを確認した。旧道場側を変更せず、実DB・外部サービス・Event機構へ接続していない。新しい配布候補framework.6のSHA-256は2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d。生成物と実行ログは既存のignore方針のまま扱い、Commit／Pushは未実施。
+
+## Artifact Snapshot Stage 2-1（2026-11-13）
+
+Memory上の全箱Snapshot生成・検証・新規Manager復元を正式Workflow Unitへ追加した。Snapshotはartifact-snapshot/1、Codecはartifact-json/1。型付き再帰形式でundefined・負のゼロを保持し、箱・キー・オブジェクトキーの順序を正規化する。既存Memory ShelfとCMRP6工程は維持し、外部共有ShelfはMemory利用を許可したままSnapshot生成だけ拒否する。
+
+復元はArtifactManager.fromSnapshotによるFactory方式で、既存Managerを変更しない。復元品はrunId未結合のままであり、再開を許可する機能ではない。SQLite／Workflow Store Schema／Resume Adapter／Firestoreは今回変更しない。Stage 2-2ではDefinition・runId・保存Revision等の照合と、状態＋全箱＋Leaseの保存・再開整合性を実装する必要がある。
+
+既存32資産の承認を維持し、Codecソースと専用20試験をNEWとして追加登録した（計34資産）。Workflow検証の期待件数は46から66へ更新する。更新前のRegistry・latest・status原文とSHAをreports/history/artifact-snapshot-before-stage21.jsonへ保全した。検証済みSHAは既存verifierによる実テストと指紋確認でのみ更新し、COMPLETE承認は行わない。
+
+正式API・Schema・Codec制約はWorkflow/docs/README.md末尾を参照する。配布生成器は新規内部モジュールを収録し、既存アーカイブを上書きしないよう候補framework.7へ更新する。今回もStage・Commit・Pushは行わない。
+
+### Stage 2-1 最終確認
+
+今回の再実行結果：Snapshot専用20 PASS、Workflow Unit66 PASS、Definition／CMRP／Factory／SQLite／WAITING・再開関連181 PASS、配布・独立利用6 PASS、Migration管理30 PASS、ルート541 PASS。Migration資産検証は7グループ121 PASS（DB7・Core3・Member3・TimeTrip17・Workflow66・公開API8・Member Schema17）。FAIL／SKIPは0。Root／Unit Build、両TypeScript noEmit型検査、変更JS構文検査、git diff --checkもPASS。試験には重複があり、単純加算しない。
+
+既存32資産を含む34/34 VERIFIED、警告0、未登録0、COMPLETE承認0。開始時HEAD c06538233a94a4642cf4dd05722221d0d4772cebを維持し、Stageは空。保留5文書と既存11配布版のtgz・記録22ファイルのSHA不変を確認した。テスト生成のframework.7は新規候補であり、保全済み配布物の上書きはない。Stage・Commit・Pushは未実施。
+
+## Stage 2-1 Snapshot入力検証の安全性修正（2026-11-13）
+
+配列サブクラスのmap getterが実行される欠陥を修正した。Snapshot／Codec入力を自有データ記述子から取り込み、通常配列のみ受理する。入力側メソッド・iterator・アクセサを実行しない。同じ修正をCodecの入れ子値と復元FactoryのdeclaredBoxesへ適用した。既存Managerの部分更新はなく、Stage 2-2のSQLite・再開・claim接続は追加していない。
+
+通常JSONデータに対するgetter非実行を保証範囲とし、Proxyは対象外とする。反射操作自体がProxy trapを実行し得るため、任意Proxyの副作用ゼロ・必ず拒否を保証しない。詳細と制約はWorkflow READMEの安全性修正節を参照する。
+
+既存34資産・承認を維持し、新規資産は追加しない。安全性12試験追加によりWorkflow検証の期待件数を66から78へ更新する。更新前のRegistry／latest／statusをreports/history/artifact-snapshot-before-safety-fix.jsonへ原文・SHA付きで保存した。過去証跡は欠陥未検出時点の記録として維持し、実テストと指紋による再検証だけで最新SHAを更新する。COMPLETE承認は行わない。
+
+配布試験は既存framework.7等を上書きせず、新候補framework.8を生成する。Snapshot／Codec Schemaと正式API、CMRP6工程、旧CJob・Workflow制御は変更しない。Stage・Commit・Pushは未実施。
+
+### 安全性修正の最終検証結果
+
+元の再現入力はgetterCalls=0、accepted=false、INVALID_ARTIFACT_SNAPSHOTとなった。追加安全性12試験を含むSnapshot専用32 PASS、Workflow Unit78 PASS、CMRP／Factory／SQLite／再開関連181 PASS、配布・独立実行・型利用6 PASS、Migration管理30 PASS、ルート541 PASSを確認した。Migration資産検証は7グループ133 PASS。Build・型検査・JS構文検査・git diff --checkもPASS。FAIL／SKIPは0であり、重複試験を単純合算しない。
+
+既存34/34 VERIFIED、警告0、未登録0、COMPLETE承認0を維持した。保留5文書、作業開始時の配布12版のtgz・記録24ファイルはSHA不変。既存Stage 2-1の13ファイルを保全して修正し、追加は更新前証跡artifact-snapshot-before-safety-fix.json。HEADはc06538233a94a4642cf4dd05722221d0d4772ceb、Stageは空で、Commit／Pushは行っていない。

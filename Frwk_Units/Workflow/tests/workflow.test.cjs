@@ -2,6 +2,7 @@
 // The canonical Unit entry exercises both execution and construction contracts.
 require('./builder.test.cjs');
 require('./artifacts.test.cjs');
+require('./artifact-snapshot.test.cjs');
 const {test}=require('node:test'),a=require('node:assert/strict');
 const {CJobForm,CJob,CWorkflow,CCheckJob,CSequenceBool,CMemoryHistoryStore,createExecutionContext,getExecutionState,getRecorded,getCleanupWarning,createMemoryProductShelf}=require('@arch026/workflow');
 test('executed build matches current Unit source and build configuration',()=>{const fs=require('node:fs'),path=require('node:path'),{createHash}=require('node:crypto'),record=require('../dist/build-inputs.json');for(const [name,expected]of Object.entries(record.files))a.equal(createHash('sha256').update(fs.readFileSync(path.join(__dirname,'..',name))).digest('hex'),expected,name);});
