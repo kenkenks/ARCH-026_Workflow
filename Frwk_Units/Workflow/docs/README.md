@@ -363,3 +363,64 @@ fromSnapshotは検証後の独立した正規化データだけで復元し、�
 Proxyはサポート対象外である。getPrototypeOf／ownKeys／getOwnPropertyDescriptor自体がProxy trapを実行し得るため、任意のProxyについて副作用ゼロや必ず拒否できることは保証しない。透過的Proxyが通過する場合もある。通常のJSON.parse結果と通常のデータオブジェクト・配列が入力契約であり、本検証は不正コードのsandboxではない。
 
 安全性12試験を既存Snapshot専用ファイルへ追加し、getter呼出し回数0、継承iterator非実行、入れ子アクセサ、宣言リスト、Factoryの非破壊性、正常往復、参照独立性を検証する。Proxyの反射trapが発生し得ることも明示的に試験する。独立パッケージでもmap getterの非実行を確認する。保全済みframework.7を上書きせず、配布試験の候補はframework.8へ更新する。
+
+## Stage 2-2A：SQLite Artifact Checkpoint保存（2026-11-13）
+
+既存WaitingHistoryStoreの保存経路にArtifact Snapshotを統合した。既存のwaiting_runs(run_id, state_json)、SQLite user_version=1、row.schemaVersion=1は変更せず、テーブル追加・Open時Migrationも行わない。別Storeは追加していない。
+
+### Checkpointと公開Port
+
+IWorkflowHistoryStoreに任意の`saveCheckpoint(workflow: RunSnapshot, artifacts: ArtifactSnapshot): void | Promise<void>`を追加した。ArtifactManagerを持つCWorkflowは、対応Storeの場合に限り、既存persist境界でcreateSnapshotを呼び、このPortへ両Snapshotを渡す。保存失敗時にsaveへフォールバックしない。未対応Memory StoreやArtifactManagerを持たない旧Workflowは従来のsaveを利用する。
+
+Snapshot取得は開始時・各Job/Check完了後・FAILED・WAITING・LIMIT_REACHED等の既存保存境界で行う。recordの内部成果を直接読まず、Managerの公開済みShelfだけを対象とする。post公開後失敗やcleanup失敗でも、公開済み成果はFAILED Checkpointに残る。
+
+### state_jsonの追加形式
+
+既存rowのDefinition識別、snapshot、revision、owner、operations、activeOperationId等を維持し、保存対応経路では次のcheckpointを追加する。
+
+```text
+checkpoint:
+  formatVersion: workflow-checkpoint/1
+  workflowSnapshot: root snapshotと同値
+  artifactSnapshot: artifact-snapshot/1 / artifact-json/1
+  revision: root revisionと同値
+  operationIdentifier: root activeOperationIdと同値
+```
+
+旧Checkpointはcheckpointフィールドなし、新Checkpointは上記明示形式で区別する。Artifact Snapshotは正式Validatorを再利用し、独自に再定義しない。Checkpoint識別はrunId＋revision、operationIdentifierは既存のSTART/RESUME操作IDであり、保存ごとの新しい操作IDを導入したものではない。Definition ID／Version／Digestは既存Store設定を保存する。BuilderのDefinition実体とのDigest照合はStage 2-2Bで行い、今回新たに保証したことにしない。
+
+### Transactionと障害
+
+WaitingHistoryStore.saveCheckpointはArtifact Snapshotを先に検証・分離してから既存保存処理へ入り、SQLite Backendの同じBEGIN IMMEDIATE内で所有権・fence・lease・Revision・履歴整合性を検証する。WorkflowSnapshot・ArtifactSnapshot・Revision・操作完了記録・WAITING lease解放をstate_jsonの一回の更新とCOMMITで確定する。
+
+Snapshot生成／Validatorエラーは書込Transactionに進まない。BEGIN失敗、Transaction内失敗、COMMIT結果不明は既存分類を維持し、CWorkflowのHISTORY_SAVE_OUTCOME_UNKNOWNを弱めない。OUTCOME_UNKNOWNの後はStoreをpoisonedとし書込を拒否する。読戻し一致は観測結果であり、応答喪失を成功へ置き換えない。業務DB・通知等の外部副作用をRollbackしたという保証はない。lease検査は既存Transaction内の時刻契約を維持し、commit瞬間の有効性まで新たに保証するものではない。
+
+### 読戻しと互換性
+
+低レベルWaitingHistoryStore.readCheckpoint()はDefinition識別、WorkflowSnapshot、正式Validatorで検証したArtifactSnapshot、Revision、操作ID、ownerを返す検証用の独立DTOである。Manager復元・runId結合・claimは行わない。root snapshotとcheckpoint.workflowSnapshot、Revision、activeOperationIdの一致も読込時に確認する。
+
+新Checkpointに対するSnapshotなしsave、旧productsへのput、旧データからの暗黙昇格を拒否する。新CheckpointのclaimWaiting/claimLimitはARTIFACT_CHECKPOINT_RESUME_UNSUPPORTEDで書込前に拒否する。旧Checkpointのoperation再送・WAITING/LIMIT_REACHED再開・旧CJob経路は維持する。旧バイナリへ新Checkpointを渡すダウングレード互換性は保証しない。
+
+本機能はWAITING SQLite経路が対象で、低レベルMemoryLifecycleBackendでも同じ原子的状態更新ロジックを利用する。公開MemoryWaitingStore WrapperやFirestore Adapterへ新機能を展開していない。既存の明示共有ShelfによるMemory実行は維持するが、SQLite Checkpoint生成で外部Shelfが拒否された場合、Memoryへ自動切替しない。
+
+### 配布・後続工程
+
+正式Unitの型付きPortと、独立パッケージでのCheckpoint呼出しを検証する。旧配布候補を上書きせずframework.9を利用する。SQLite自体を旧配布パッケージへ混入させない。
+
+Stage 2-2Bへ残すもの：別プロセス再開、Definitionと保存内容の照合、検証済みManager復元、runId結合、Revision再検証とclaim接続。新Checkpointの再開ガードは2-2B実装まで維持する。Snapshot/Codec Schema、CMRP6工程、Job公開境界、既存SQLite再開機構、Eventは変更していない。
+
+### Stage 2-2A：Checkpointと操作履歴の整合性修正（2026-11-13）
+
+レビューで再現した3件（操作Revision不一致、WAITINGに対するRUNNING操作、操作Snapshotの待機理由不一致）は、Checkpointとroot rowの照合だけでは検出できなかった。操作履歴の確定Revisionを単に1以上・row Revision以下とする既存範囲検査では、同じ確定世代の証明にならなかった。
+
+保存処理から確認した正式な意味は、checkpoint.operationIdentifier＝row.activeOperationId＝現在の実行操作のIDである。「最後に確定した過去操作」を選択する識別子ではない。START／RESUMEはRUNNING操作を作り、各RUNNING保存でrow/checkpoint Revisionだけを進める。WAITING／LIMIT_REACHED／COMPLETED／FAILED保存では、同じTransactionで操作をFINISHEDにし、確定RevisionとWorkflowSnapshotを記録してownerをRELEASEDにする。
+
+共通のvalidateCheckpointConsistency(row)を読込時のvalidateと、保存処理の確定前から呼ぶ。操作はIDで一意に特定できなければ拒否する。RUNNING Checkpointはowner ACTIVE・操作RUNNING・確定Snapshot/Revisionなしを要求する。確定済みCheckpointはowner RELEASED・操作FINISHED・operation.revision＝checkpoint.revision＝row.revision、および操作Snapshot＝Checkpoint Snapshot＝row Snapshotを要求する。
+
+Snapshotは既存のDTO検証に通し、既存isDeepStrictEqualで比較する。プロパティ順は無関係だが、Step・状態・履歴・WAITING理由/世代/次工程・failure等は比較対象になる。Artifact Snapshotは既存ValidatorでVersion・構造・箱/キー重複等を検査する。Definitionの箱宣言実体はこのStoreにないため、その照合はStage 2-2Bへ残す。
+
+不整合は既存DATA_CORRUPTで拒否する。新Checkpoint内の不正な保存Snapshotから生じた入力エラーも、読込境界ではDATA_CORRUPTへ揃える。旧Checkpointには新規必須項目や新しいエラー分類を適用しない。read／load／readCheckpoint／更新前検証は同じ経路を利用し、不正データを自動採用・修復しない。新Checkpointの再開拒否は維持する。
+
+回帰試験は修正前に既存23 PASS・新規3 FAILを記録し、修正後は3件すべてPASS。追加検証途中ではエラー分類差で38 PASS・1 FAILとなり、分類を修正した。これらのログと更新前証跡はMigrationのhistoryへ保全する。追加16試験を含むCheckpoint試験39件で、欠落・重複操作、不明Version、Snapshot欠落/不正、プロパティ順、RUNNING中間状態、DB非変更、Store/Workflow経由の再開拒否も検証する。
+
+保存Transaction、Revision更新、lease解放、UNKNOWNガード、SQLite Schema、CMRP、Artifact Snapshot Schema、Manager公開APIは変更していない。保全済みframework.9を上書きしないため、配布候補はframework.10とする。Stage 2-2Bは未実装のままである。

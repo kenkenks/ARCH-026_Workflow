@@ -714,3 +714,35 @@ Memory上の全箱Snapshot生成・検証・新規Manager復元を正式Workflow
 元の再現入力はgetterCalls=0、accepted=false、INVALID_ARTIFACT_SNAPSHOTとなった。追加安全性12試験を含むSnapshot専用32 PASS、Workflow Unit78 PASS、CMRP／Factory／SQLite／再開関連181 PASS、配布・独立実行・型利用6 PASS、Migration管理30 PASS、ルート541 PASSを確認した。Migration資産検証は7グループ133 PASS。Build・型検査・JS構文検査・git diff --checkもPASS。FAIL／SKIPは0であり、重複試験を単純合算しない。
 
 既存34/34 VERIFIED、警告0、未登録0、COMPLETE承認0を維持した。保留5文書、作業開始時の配布12版のtgz・記録24ファイルはSHA不変。既存Stage 2-1の13ファイルを保全して修正し、追加は更新前証跡artifact-snapshot-before-safety-fix.json。HEADはc06538233a94a4642cf4dd05722221d0d4772ceb、Stageは空で、Commit／Pushは行っていない。
+
+## Stage 2-2A：SQLite Artifact Checkpoint保存（2026-11-13）
+
+既存WaitingHistoryStoreとSQLiteLifecycleBackendの単一Transaction経路へ、全箱Artifact Snapshotを追加した。CWorkflowは任意のsaveCheckpoint Portがある場合に既存保存境界でManagerの公開済みShelfをSnapshot化する。旧saveへの失敗フォールバックや、record内部成果の保存は行わない。SQLテーブル・PRAGMA user_version・既存row.schemaVersionは変更しておらず、Schema Migrationは不要で実行していない。
+
+state_jsonの任意checkpointフィールド（workflow-checkpoint/1）に、WorkflowSnapshot・ArtifactSnapshot・Revision・既存操作IDを保持する。root snapshotとの一致を検査し、WAITINGのlease解放と操作完了を同じCOMMITで確定する。新Checkpointの読戻しは検証DTOだけで、復元・runId結合・claim接続は未実装。新Checkpointへの旧saveや旧claimによる暗黙継続は拒否し、旧Checkpointの動作は維持する。
+
+既存34資産の承認を維持し、新規SQLite専用23試験をNEWとして1資産追加した。新検証グループartifact-checkpointは対象Adapter・SQLite Backend・SimpleDB・Build出力を入力指紋に含める。既存verifierのローカル試験allowlistには、この実サービス非接続・一時DB専用試験だけを追加した。ガード・判定条件の緩和は行わない。Workflow試験はPort試験2件追加に伴い80件へ更新した。
+
+更新前Registry／latest／statusの原文とSHAはreports/history/artifact-checkpoint-before-stage22a.jsonに保全した。最新SHAは実テスト成功時のみ更新し、COMPLETE承認は行わない。配布候補は既存framework.8等を保全してframework.9とする。正式API・保存形式・障害分類・保証範囲はWorkflow README末尾を参照する。Stage・Commit・Pushは行わない。
+
+### Stage 2-2A 最終検証
+
+新規SQLite Checkpoint23 PASS、Workflow Unit80 PASS、Definition／CMRP／Factory／SQLite／WAITING・再開関連181 PASS、配布・独立実行・型利用6 PASS、Migration管理30 PASS、ルート全回帰541 PASS。Migration資産検証は8グループ158 PASS（既存34資産を含む35/35 VERIFIED、警告0、未登録0、COMPLETE承認0）。Build・Unit Build・両TypeScript型検査・変更JS構文検査・git diff --checkもPASS。今回のFAIL／SKIPは0で、試験間の重複は単純合算しない。
+
+保留5文書と既存配布13版のtgz・記録26ファイルのSHA不変を確認した。HEADはb4be36be2cd908836bd76652a9718ee067d25488、main、Stage空で、Commit／Pushは未実施。次工程はStage 2-2BのDefinition整合検証・Manager復元・runId結合・claim競合検証であり、今回のreadCheckpointを実行再開へ接続していない。
+
+## Stage 2-2A：Checkpoint・操作履歴整合性修正（2026-11-13）
+
+Checkpointが指すのは現在の実行操作である。共通検証を追加し、確定済みCheckpointでは操作FINISHED・owner RELEASED・確定Revision一致・WorkflowSnapshot一致を必須とした。RUNNING中間保存は操作RUNNING・確定Revision/Snapshotなしという実際の保存契約を維持する。操作欠落・重複も拒否する。Snapshot比較は既存DTO検証とisDeepStrictEqualを利用し、オブジェクトのプロパティ順で誤判定しない。
+
+新Checkpointの不整合は既存DATA_CORRUPTへ統一し、旧Checkpointの検証・エラー契約は変更しない。読込全経路と保存確定前で同じ共通検証を用いる。Transaction境界、lease/Revision/operation確定、UNKNOWN処理は維持する。Definition実体との箱宣言照合と、新Checkpointの再開接続はStage 2-2Bのままである。
+
+既存35資産と承認を維持し、新規資産は追加しない。既存Checkpoint試験への16試験追加に伴い、artifact-checkpointグループの期待件数を23から39へ更新する。更新前Registry/latest/status、開始時ファイルSHA、修正前の3 FAILと追加検証途中の1 FAILのログをreports/history/artifact-checkpoint-before-consistency-fix.jsonへ保全した。過去結果を最終PASSへ書き換えず、最新証跡は実際の再検証に基づいて更新する。
+
+配布候補は既存アーカイブ保全のためframework.10へ更新する。COMPLETE承認・Stage・Commit・Pushは行わない。
+
+### 整合性修正の最終検証
+
+Checkpoint試験39 PASS（今回追加16件、うち3件は修正前FAIL→修正後PASS）、Workflow Unit80 PASS、CMRP／Factory／SQLite／再開関連181 PASS、配布・独立実行・型利用6 PASS、Migration管理30 PASS、ルート全回帰541 PASS。Migration資産検証は8グループ174 PASS、既存35/35 VERIFIED、警告0、未登録0、COMPLETE承認0。Build・型検査・JS構文検査・git diff --checkもPASS。最終FAIL／SKIPは0。修正前・途中のFAILは上記historyへ残し、最終結果と混同しない。試験間の重複は単純合算しない。
+
+保留5文書と既存配布14版のtgz・記録28ファイルのSHA不変を確認した。HEADはb4be36be2cd908836bd76652a9718ee067d25488、main、Stage空。既存Stage 2-2Aの13ファイルは保全し、追加ファイルは整合性修正前証跡1件。SQLite Schema・保存Transaction・Workflow実行制御・旧CJob・Snapshot契約・Eventは変更せず、Stage 2-2Bには着手していない。Commit／Pushは未実施。

@@ -2,6 +2,7 @@
 const {randomUUID}=require('node:crypto');
 const {isDeepStrictEqual:equal}=require('node:util');
 const {CMemoryHistoryStore}=require('../../../dist/src/prototype/workflow');
+const {validateArtifactSnapshot}=require('../../../dist/Frwk_Units/Workflow/src/ArtifactSnapshot');
 const copy=x=>structuredClone(x);
 const fail=code=>{throw Object.assign(new Error(code),{code});};
 const text=x=>typeof x==='string'&&!!x.trim()&&x.length<=256;
@@ -19,6 +20,25 @@ function operation(value,runId){
  json(value.result);if(Buffer.byteLength(JSON.stringify(value),'utf8')>65536)fail('INVALID_ARGUMENT');return copy(value);
 }
 function snapshot(value){const m=new CMemoryHistoryStore();m.save(value);const s=m.load(value.runId);if(s.history.some((h,i)=>h.order!==i+1))fail('DATA_CORRUPT');return s;}
+/** The Checkpoint refers to the current execution operation, not an older receipt.
+ * RUNNING saves are progress; non-RUNNING saves finalize that operation atomically.
+ * Legacy rows without a Checkpoint keep their existing validation contract.
+ */
+function validateCheckpointConsistency(row){
+ if(!Object.hasOwn(row,'checkpoint'))return;
+ const c=row.checkpoint;
+ if(!c||typeof c!=='object'||Array.isArray(c)||Object.keys(c).sort().join(',')!=='artifactSnapshot,formatVersion,operationIdentifier,revision,workflowSnapshot'||
+    c.formatVersion!=='workflow-checkpoint/1'||!row.snapshot||c.revision!==row.revision||c.revision<1||c.operationIdentifier!==row.activeOperationId||!equal(c.workflowSnapshot,row.snapshot))fail('DATA_CORRUPT');
+ const matching=row.operations.filter(op=>op.operationId===c.operationIdentifier);
+ if(matching.length!==1)fail('DATA_CORRUPT');
+ const op=matching[0];
+ if(row.snapshot.status==='RUNNING'){
+  if(row.owner.state!=='ACTIVE'||op.status!=='RUNNING'||Object.hasOwn(op,'snapshot')||Object.hasOwn(op,'revision'))fail('DATA_CORRUPT');
+ }else{
+  if(row.owner.state!=='RELEASED'||op.status!=='FINISHED'||op.revision!==c.revision||!op.snapshot||!equal(snapshot(op.snapshot),snapshot(c.workflowSnapshot)))fail('DATA_CORRUPT');
+ }
+ try{validateArtifactSnapshot(c.artifactSnapshot);}catch{fail('DATA_CORRUPT');}
+}
 /** Small synchronous atomic backend. No execution callbacks inside transactions. */
 class MemoryLifecycleBackend {
  constructor({now=Date.now}={}){this.rows=new Map();this.now=now;}
@@ -33,10 +53,17 @@ class WaitingHistoryStore {
   Object.assign(this,{backend,runId,definitionId,definitionVersion,definitionDigest,ownerId,leaseMs,hooks});this.credential=null;this.revision=0;this.poisoned=false;
   this.products={has:key=>this.read()?.products.some(p=>p.key===key)||false,get:key=>copy(this.read()?.products.find(p=>p.key===key)?.value),put:(key,value)=>{
    if(!text(key))fail('INVALID_ARGUMENT');json(value);const detached=copy(value);
-   const row=this.mutate((r,now)=>{this.guarded(r,now);const p=r.products.find(p=>p.key===key);if(p)p.value=detached;else r.products.push({key,value:detached});r.revision++;r.updatedAt=new Date(now).toISOString();return r;});this.revision=row.revision;
+   const row=this.mutate((r,now)=>{this.guarded(r,now);if(r.checkpoint)fail('ARTIFACT_CHECKPOINT_REQUIRED');const p=r.products.find(p=>p.key===key);if(p)p.value=detached;else r.products.push({key,value:detached});r.revision++;r.updatedAt=new Date(now).toISOString();return r;});this.revision=row.revision;
   }};
  }
  validate(row){
+  try{return this.#validateRow(row);}catch(error){
+   // A malformed persisted Checkpoint is corruption, not a caller input error.
+   // Preserve the legacy error contract for rows without the new Checkpoint.
+   if(row&&Object.hasOwn(row,'checkpoint'))fail('DATA_CORRUPT');throw error;
+  }
+ }
+ #validateRow(row){
   if(!row)return row;
   if(row.schemaVersion!==1||row.runId!==this.runId||row.definitionId!==this.definitionId||row.definitionVersion!==this.definitionVersion||row.definitionDigest!==this.definitionDigest||
     !Number.isSafeInteger(row.revision)||row.revision<0||!row.owner||!Number.isSafeInteger(row.owner.fence)||row.owner.fence<1||
@@ -51,10 +78,15 @@ class WaitingHistoryStore {
   if(!ids.has(row.activeOperationId)||row.events.some((e,i)=>!e||e.sequence!==i+1||!text(e.kind)||!text(e.at))||row.products.some(p=>!p||!text(p.key))||new Set(row.products.map(p=>p.key)).size!==row.products.length)fail('DATA_CORRUPT');
   try{for(const p of row.products)json(p.value);json(row.input);}catch{fail('DATA_CORRUPT');}
   if(row.snapshot){const s=snapshot(row.snapshot);if(s.runId!==this.runId||s.status==='WAITING'&&row.owner.state!=='RELEASED'||s.status==='RUNNING'&&row.owner.state!=='ACTIVE')fail('DATA_CORRUPT');}
+  validateCheckpointConsistency(row);
   return row;
  }
  read(){return copy(this.validate(this.backend.read(this.runId)));}
  load(id){if(id!==this.runId)fail('RUN_MISMATCH');return this.read()?.snapshot;}
+ /** Read-back verification only; never restores a Manager, binds runId or claims a run. */
+ readCheckpoint(){const row=this.read();if(!row?.checkpoint)return undefined;const c=row.checkpoint;return copy({formatVersion:c.formatVersion,runId:row.runId,
+  definition:{id:row.definitionId,version:row.definitionVersion,digest:row.definitionDigest},workflowSnapshot:row.snapshot,
+  artifactSnapshot:validateArtifactSnapshot(c.artifactSnapshot),revision:row.revision,operationIdentifier:c.operationIdentifier,owner:row.owner});}
  event(row,kind,now,extra={}){row.events.push({sequence:row.events.length+1,kind,at:new Date(now).toISOString(),...extra});}
  guarded(row,now){
   const o=row?.owner,c=this.credential;
@@ -80,20 +112,34 @@ class WaitingHistoryStore {
   }));
  }
  save(value){
+  return this.#saveValue(value);
+ }
+ saveCheckpoint(value,artifacts){
+  // Validate/detach before reading SQLite or beginning any write transaction.
+  return this.#saveValue(value,validateArtifactSnapshot(artifacts));
+ }
+ #saveValue(value,artifacts){
   const s=snapshot(value);if(s.runId!==this.runId)fail('RUN_MISMATCH');
   const observed=this.read();
+  if(observed?.checkpoint&&artifacts===undefined)fail('ARTIFACT_CHECKPOINT_REQUIRED');
+  if(artifacts!==undefined&&observed&&!observed.checkpoint&&(observed.snapshot||observed.products.length))fail('ARTIFACT_CHECKPOINT_MODE_MISMATCH');
   if(s.status!=='RUNNING'&&observed?.owner.state==='RELEASED'&&observed.owner.token===this.credential?.token&&
-    observed.owner.fence===this.credential?.fence&&observed.revision===this.revision&&equal(observed.snapshot,s))return;
+    observed.owner.fence===this.credential?.fence&&observed.revision===this.revision&&equal(observed.snapshot,s)&&
+    (artifacts===undefined||equal(observed.checkpoint?.artifactSnapshot,artifacts)))return;
   const row=this.mutate((row,now)=>{
    this.guarded(row,now);
+   if(row.checkpoint&&artifacts===undefined)fail('ARTIFACT_CHECKPOINT_REQUIRED');
+   if(artifacts!==undefined&&!row.checkpoint&&(row.snapshot||row.products.length))fail('ARTIFACT_CHECKPOINT_MODE_MISMATCH');
    const prior=row.snapshot?.history||[];if(s.history.length<prior.length||!equal(s.history.slice(0,prior.length),prior))fail('HISTORY_CONFLICT');
    if(s.status==='WAITING'&&(s.waiting.generation!==(row.snapshot?.waitSequence||0)+1||s.history.at(-1)?.nextStepNo!==s.currentStepNo&&s.history.length>0))fail('WAIT_CONFLICT');
    row.snapshot=copy(s);row.revision++;row.updatedAt=new Date(now).toISOString();
+   if(artifacts!==undefined)row.checkpoint={formatVersion:'workflow-checkpoint/1',workflowSnapshot:copy(s),artifactSnapshot:copy(artifacts),revision:row.revision,operationIdentifier:row.activeOperationId};
    if(s.status!=='RUNNING'){
     row.owner={...row.owner,state:'RELEASED',expiresAt:now};
     if(s.status==='WAITING')this.event(row,'WAIT_ENTERED',now,{generation:s.waiting.generation,reason:s.waiting.reason,nextStepNo:s.waiting.nextStepNo,operationId:row.activeOperationId});
     const op=row.operations.find(x=>x.operationId===row.activeOperationId);if(op){op.status='FINISHED';op.snapshot=copy(s);op.revision=row.revision;}
    }
+   validateCheckpointConsistency(row);
    return row;
   });this.revision=row.revision;
  }
@@ -101,6 +147,7 @@ class WaitingHistoryStore {
  async claimWaiting(saved,request){
   const value=operation(request,this.runId),s=snapshot(saved);if(s.status!=='WAITING')fail('NOT_WAITING');
   const observed=this.read(),prior=observed?.operations.find(x=>x.operationId===value.operationId);
+  if(observed?.checkpoint)fail('ARTIFACT_CHECKPOINT_RESUME_UNSUPPORTED');
   if(prior){if(!equal(prior.request,value))fail('OPERATION_CONFLICT');if(prior.status!=='FINISHED')fail('OPERATION_IN_PROGRESS');return {replayed:true,snapshot:copy(prior.snapshot)};}
   let replay,row;
   try{row=this.mutate((row,now)=>{
@@ -108,6 +155,7 @@ class WaitingHistoryStore {
    const op=row?.operations.find(x=>x.operationId===value.operationId);
    if(op){if(!equal(op.request,value))fail('OPERATION_CONFLICT');if(op.status==='FINISHED'){replay=copy(op.snapshot);fail('OPERATION_ALREADY_APPLIED');}fail('OPERATION_IN_PROGRESS');}
    if(!row)fail('RUN_NOT_FOUND');
+   if(row.checkpoint)fail('ARTIFACT_CHECKPOINT_RESUME_UNSUPPORTED');
    if((row.snapshot?.waitSequence||0)!==value.expectedWaitGeneration)fail('STALE_WAIT_GENERATION');
    if(row.snapshot?.status!=='WAITING')fail('NOT_WAITING');
    if(row.revision!==value.expectedRevision)fail('REVISION_CONFLICT');
@@ -123,6 +171,7 @@ class WaitingHistoryStore {
  claimLimit(saved,operationId=randomUUID()){
   if(!text(operationId))fail('INVALID_ARGUMENT');const s=snapshot(saved);
   return this.adopt(this.mutate((row,now)=>{if(!row||s.status!=='LIMIT_REACHED'||!equal(row.snapshot,s)||row.owner.state!=='RELEASED')fail('RESUME_STATE_CHANGED');
+   if(row.checkpoint)fail('ARTIFACT_CHECKPOINT_RESUME_UNSUPPORTED');
    if(row.operations.some(x=>x.operationId===operationId))fail('OPERATION_CONFLICT');row.owner=this.newOwner(row.owner,now);row.activeOperationId=operationId;
    row.operations.push({operationId,kind:'RESUME_LIMIT',status:'RUNNING'});return row;
   }));

@@ -1,6 +1,7 @@
 import {CJobForm,createExecutionContext,getExecutionState,getRecorded,executeLegacyForm} from './CJobForm';
 import type {JobFormDefinition,ProductShelf,ExecutionContext} from './CJobForm';
 import {ArtifactManager} from './ArtifactManager';
+import type {ArtifactSnapshot} from './ArtifactSnapshot';
 /** Framework Workflow execution implementation. Legacy imports re-export this module. */
 export class WorkflowValidationError extends Error {
   readonly code='INVALID_ARGUMENT';
@@ -117,7 +118,10 @@ export class WorkflowRunError extends Error {
     this.name='WorkflowRunError';this.code=code;this.outcome=code==='BEFORE_STEP_FAILED'?'FAILED':'UNKNOWN';
   }
 }
-export interface IWorkflowHistoryStore { save(snapshot: RunSnapshot): void | Promise<void>; load(runId: string): RunSnapshot | undefined | Promise<RunSnapshot | undefined>; }
+export interface IWorkflowHistoryStore { save(snapshot: RunSnapshot): void | Promise<void>; load(runId: string): RunSnapshot | undefined | Promise<RunSnapshot | undefined>;
+  /** Optional atomic state + artifacts capability. Legacy/Memory stores need not implement it. */
+  saveCheckpoint?(snapshot:RunSnapshot,artifacts:ArtifactSnapshot):void|Promise<void>;
+}
 /** The caller authorizes operations; this Port atomically owns CAS, receipt and Lease. */
 export interface IWaitingHistoryStore extends IWorkflowHistoryStore {
   claimWaiting(snapshot:RunSnapshot,operation:WaitingOperation):Promise<{replayed:boolean;snapshot:RunSnapshot}>;
@@ -217,7 +221,10 @@ export class CWorkflow {
       ...(waitSequence?{waitSequence}:{}),...(failure?{failure}:{})});
     const persist = async (value: RunSnapshot, primary?: {cause:unknown}): Promise<void> => {
       // A Store may retain its input. Keep Core-owned results/diagnostics separate.
-      try { await this.store.save(copySnapshot(value)); }
+      try {
+        if(this.artifacts&&typeof this.store.saveCheckpoint==='function')await this.store.saveCheckpoint(copySnapshot(value),this.artifacts.createSnapshot());
+        else await this.store.save(copySnapshot(value));
+      }
       catch (storageCause) {
         let observation: NonNullable<WorkflowRunError['observation']>;
         try { const stored=await this.store.load(runId); observation=stored?{state:'AVAILABLE',snapshot:structuredClone(stored)}:{state:'ABSENT'}; }

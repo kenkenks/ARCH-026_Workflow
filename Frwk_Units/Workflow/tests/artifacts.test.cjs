@@ -83,3 +83,11 @@ test('WAITING resume preserves manager, does not repeat producer and refuses los
 test('manager cannot leak prior products into a different runId through graph reuse',async()=>{
  const g=build(definition(),{p:new Form('p')});await g.workflow.run('first',10);await a.rejects(g.workflow.run('second',10),{code:'ARTIFACT_RUN_MISMATCH'});
 });
+
+test('artifact Checkpoint capability receives paired workflow and published Shelf snapshots at existing boundaries',async()=>{
+ const store=new CMemoryHistoryStore(),saved=[];store.saveCheckpoint=(s,p)=>{saved.push({s:structuredClone(s),p:structuredClone(p)});store.save(s);};const g=build(definition([job('p',10,'review')]),{p:new Form('p')},store);await g.workflow.run('checkpoint-port',10);
+ a.equal(saved[0].s.status,'RUNNING');a.equal(ArtifactManager.fromSnapshot(saved[0].p).reader('review').has('X'),false);const end=saved.at(-1);a.equal(end.s.status,'COMPLETED');a.equal(ArtifactManager.fromSnapshot(end.p).reader('review').get('X'),10);
+});
+test('Checkpoint save failure is UNKNOWN and never falls back to standalone workflow save',async()=>{
+ const store=new CMemoryHistoryStore();let fallback=0,calls=0;store.save=()=>fallback++;store.saveCheckpoint=()=>{calls++;throw Object.assign(Error('storage failure'),{code:'OUTCOME_UNKNOWN'});};const g=build(definition(),{p:new Form('p')},store);await a.rejects(g.workflow.run('checkpoint-refusal',10),e=>e.code==='HISTORY_SAVE_OUTCOME_UNKNOWN'&&e.storageCause.code==='OUTCOME_UNKNOWN');a.equal(calls,1);a.equal(fallback,0);
+});

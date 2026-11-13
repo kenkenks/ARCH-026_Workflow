@@ -36,6 +36,7 @@
 | workflow-new-tests-artifacts | Frwk_Units/Workflow/tests/artifacts.test.cjs | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | workflow-new-ArtifactSnapshot | Frwk_Units/Workflow/src/ArtifactSnapshot.ts | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | workflow-new-tests-artifact-snapshot | Frwk_Units/Workflow/tests/artifact-snapshot.test.cjs | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| workflow-new-tests-artifact-checkpoint | tests/workflow-artifact-checkpoint.test.cjs | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 
 ## 未登録ファイル
 

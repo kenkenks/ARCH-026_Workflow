@@ -114,7 +114,7 @@
         "src/prototype/definition.ts",
         "Frwk_Units/Workflow/tests"
       ],
-      "expectedTests": 78
+      "expectedTests": 80
     },
     {
       "id": "public-api",
@@ -171,6 +171,26 @@
         "Frwk_Units/DB/Builder/src",
         "Frwk_Units/DB/Builder/package.json"
       ]
+    },
+    {
+      "id": "artifact-checkpoint",
+      "kind": "node-test",
+      "persistent": true,
+      "tests": [
+        "tests/workflow-artifact-checkpoint.test.cjs"
+      ],
+      "inputs": [
+        "tests/workflow-artifact-checkpoint.test.cjs",
+        "src/adapters/workflow-waiting/lifecycle.cjs",
+        "src/adapters/workflow-waiting/sqlite.cjs",
+        "src/adapters/simpledb/database.cjs",
+        "Frwk_Units/Workflow/src",
+        "Frwk_Units/Workflow/dist",
+        "Frwk_Units/Workflow/package.json",
+        "dist/Frwk_Units/Workflow/src",
+        "dist/src/prototype/workflow.js"
+      ],
+      "expectedTests": 39
     }
   ],
   "assets": [
@@ -402,7 +422,7 @@
       "destination": "Frwk_Units/Workflow/src/CWorkflow.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "45549657e655977507b56a858095271912bfe693bea717b4cbbeb769b0efb462",
-      "destinationVerifiedSha256": "751561bf732aff41ac9a89977640b369aaf7d9da716784d84ea8e888e77869de",
+      "destinationVerifiedSha256": "c90d9cc5e9bde28e3c55e78558b6b76ece69b018373e10d635f56d26afa75d0a",
       "verifications": [
         "workflow"
       ],
@@ -527,7 +547,7 @@
       "destination": "Frwk_Units/Workflow/docs/README.md",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "360f238d71a739215c4d7f727b0da4452c09ab6d3910b666b973336f1c67c735",
+      "destinationVerifiedSha256": "6325614e48543d17c8ff87f807d6c8ebf824895f16a29b51974ce49d8544ef57",
       "verifications": [
         "workflow"
       ],
@@ -904,7 +924,7 @@
       "destination": "Frwk_Units/Workflow/tests/artifacts.test.cjs",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "ed379798b48f75e5ab94e7f541438d96b2c597d63f2f587841df2a8e5d74a05d",
+      "destinationVerifiedSha256": "2a61168bae7b9b68c60ba115504b6de01ce4568dc96eaedd7c3a4aadae41cf5f",
       "verifications": [
         "workflow"
       ],
@@ -958,6 +978,29 @@
         "analyzed": true,
         "disposition": "ACTIVE",
         "notes": "Stage 2-1 Memory all-box Snapshot and typed JSON Codec. No SQLite or resume integration."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-tests-artifact-checkpoint",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "tests/workflow-artifact-checkpoint.test.cjs",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "07abcaa4249ef6f226f0bab1f64af3da9e51760a2aa3133663371413b35d5e36",
+      "verifications": [
+        "artifact-checkpoint"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "SQLite Checkpoint atomic save/read-back tests; legacy lifecycle, SQLite backend and database are fingerprinted dependencies. No resume integration or SQL schema change."
       },
       "approval": {
         "approved": false,
