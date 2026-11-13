@@ -114,7 +114,7 @@
         "src/prototype/definition.ts",
         "Frwk_Units/Workflow/tests"
       ],
-      "expectedTests": 28
+      "expectedTests": 46
     },
     {
       "id": "public-api",
@@ -402,7 +402,7 @@
       "destination": "Frwk_Units/Workflow/src/CWorkflow.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "45549657e655977507b56a858095271912bfe693bea717b4cbbeb769b0efb462",
-      "destinationVerifiedSha256": "458e917e284dacf3cf46760dc5535a2c44fc76e88314a7510240534d2a1f5747",
+      "destinationVerifiedSha256": "751561bf732aff41ac9a89977640b369aaf7d9da716784d84ea8e888e77869de",
       "verifications": [
         "workflow"
       ],
@@ -430,7 +430,7 @@
       "destination": "Frwk_Units/Workflow/src/CJobForm.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "a67169ab7b26042dc0f1d45659ebe02db3bd4f7a4123a7caf98340ff7b32a505",
-      "destinationVerifiedSha256": "015038e83ef52bae763397e188c0c3529646ee5d504c222769a6c2fa2751cc70",
+      "destinationVerifiedSha256": "75f710a6c00601fea6be3703e46b4d161e151c5ecf971307c7d130bbe8335e56",
       "verifications": [
         "workflow"
       ],
@@ -481,7 +481,7 @@
       "destination": "Frwk_Units/Workflow/src/index.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "3dfa6eacf350e2fadd4e4aa83f4607ccd479a60400a733d69539324dd76d5926",
+      "destinationVerifiedSha256": "3eeb96fbf0bffbc252c93abc4deac2efc96ac566dcc102c3d57ad827a191d639",
       "verifications": [
         "workflow"
       ],
@@ -504,7 +504,7 @@
       "destination": "Frwk_Units/Workflow/tests/workflow.test.cjs",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "558d17bbb3aa7d4728f6ff08a441fb42ee151ec1d9f1afd07c16090b4b53dd1b",
+      "destinationVerifiedSha256": "5d5e44733484ff7439ed37ff28a87b4f7671f1fbebbafa85cf17ad2772ae5596",
       "verifications": [
         "workflow"
       ],
@@ -527,7 +527,7 @@
       "destination": "Frwk_Units/Workflow/docs/README.md",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "03735d591ee20008789efc0a46324edf40e220f22fc025f69dff346ceaef74da",
+      "destinationVerifiedSha256": "31439306d0887c05cc4336c597342a8ef0253117f3626fcc1fa3de8dc1d7c183",
       "verifications": [
         "workflow"
       ],
@@ -780,7 +780,7 @@
       "destination": "Frwk_Units/Workflow/src/Definition.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "b564f1c57e66d7aefbaee02f7bcfaac78ff292ecbdec9efcf946028d362f4cce",
-      "destinationVerifiedSha256": "48e5f7c0333e4f8bd7a5fb703e750a7a23666325dbf702aba5a6723a814e1572",
+      "destinationVerifiedSha256": "4daad7e3e14a4984a6b82468bd7340ee8aec0ff1a789c98c2b51b7442f6c3bbb",
       "verifications": [
         "workflow"
       ],
@@ -806,7 +806,7 @@
       "destination": "Frwk_Units/Workflow/src/WorkflowRegistry.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "b564f1c57e66d7aefbaee02f7bcfaac78ff292ecbdec9efcf946028d362f4cce",
-      "destinationVerifiedSha256": "a1f8ec556a86dab49d9e1a8a2c801e731258c3307b1bdabd4b78f3c9e2fb9f06",
+      "destinationVerifiedSha256": "7f5c908d08bcb9241dd536d0b81fe3cd15be0ddde2333e6718d3d55cb0c216ac",
       "verifications": [
         "workflow"
       ],
@@ -832,7 +832,7 @@
       "destination": "Frwk_Units/Workflow/src/WorkflowBuilder.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "b564f1c57e66d7aefbaee02f7bcfaac78ff292ecbdec9efcf946028d362f4cce",
-      "destinationVerifiedSha256": "0c8a4534181cb74b5640ee6e8c1abf8cfc6e4e7cb60325ce385a553eda57151a",
+      "destinationVerifiedSha256": "2fcc2f35c84d26cc3d8c88f8d56f34b22313c1f966d264feecf617262177beee",
       "verifications": [
         "workflow"
       ],
@@ -866,6 +866,52 @@
         "analyzed": true,
         "disposition": "ACTIVE",
         "notes": "Public Builder contract tests invoked by the existing Unit test entry; covers construction timing, loops, continuations and execution isolation."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-ArtifactManager",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/src/ArtifactManager.ts",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "20fbeebe9751299c14dce029103a6ff2d9ce16d2181c8d16de1bd0372b8dcaa6",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Memory artifact Stage 1: per-run shelves and native Context contracts; no persistence schema or COMPLETE approval."
+      },
+      "approval": {
+        "approved": false,
+        "destinationSha256": null,
+        "verificationFingerprint": null
+      }
+    },
+    {
+      "id": "workflow-new-tests-artifacts",
+      "origin": "NEW",
+      "repository": "framework",
+      "source": null,
+      "destination": "Frwk_Units/Workflow/tests/artifacts.test.cjs",
+      "unit": "Workflow",
+      "sourceBaselineSha256": null,
+      "destinationVerifiedSha256": "ed379798b48f75e5ab94e7f541438d96b2c597d63f2f587841df2a8e5d74a05d",
+      "verifications": [
+        "workflow"
+      ],
+      "decision": {
+        "analyzed": true,
+        "disposition": "ACTIVE",
+        "notes": "Memory artifact Stage 1: per-run shelves and native Context contracts; no persistence schema or COMPLETE approval."
       },
       "approval": {
         "approved": false,

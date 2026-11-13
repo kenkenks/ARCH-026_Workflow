@@ -1,5 +1,8 @@
 import type {JobFormDefinition as CJobForm,ProductShelf} from './CJobForm';
 import type {CJob,CWorkflowTask,IBool} from './CWorkflow';
+import type {CJobForm as NativeJobForm} from './CJobForm';
+
+export interface NativeJobFormRegistration {form:NativeJobForm<unknown,unknown>;artifactKey:string;}
 
 export interface ReconstructionContext { definitionId: string; definitionVersion: string; stepId: string }
 export interface JobFormRegistration {
@@ -8,6 +11,7 @@ export interface JobFormRegistration {
 }
 export interface JobVisitContext extends ReconstructionContext { stepNo:number; jobFormId:string; iterationNo:number }
 export interface WorkflowRegistry {
+  nativeForms?:ReadonlyMap<string,NativeJobFormRegistration>;
   jobs: ReadonlyMap<string, (context: ReconstructionContext) => CWorkflowTask>;
   checks: ReadonlyMap<string, (context: ReconstructionContext) => IBool>;
   jobForms?: {definitions:ReadonlyMap<string,JobFormRegistration>;products:ProductShelf;

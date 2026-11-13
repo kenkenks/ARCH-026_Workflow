@@ -32,6 +32,8 @@
 | workflow-WorkflowRegistry | Frwk_Units/Workflow/src/WorkflowRegistry.ts | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | workflow-WorkflowBuilder | Frwk_Units/Workflow/src/WorkflowBuilder.ts | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 | workflow-new-tests-builder-test-cjs | Frwk_Units/Workflow/tests/builder.test.cjs | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| workflow-new-ArtifactManager | Frwk_Units/Workflow/src/ArtifactManager.ts | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
+| workflow-new-tests-artifacts | Frwk_Units/Workflow/tests/artifacts.test.cjs | Workflow | VERIFIED | ACTIVE | — | EXPLICIT_COMPLETION_APPROVAL_REQUIRED | NO |
 
 ## 未登録ファイル
 

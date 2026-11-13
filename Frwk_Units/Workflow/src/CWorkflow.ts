@@ -1,5 +1,6 @@
 import {CJobForm,createExecutionContext,getExecutionState,getRecorded,executeLegacyForm} from './CJobForm';
 import type {JobFormDefinition,ProductShelf,ExecutionContext} from './CJobForm';
+import {ArtifactManager} from './ArtifactManager';
 /** Framework Workflow execution implementation. Legacy imports re-export this module. */
 export class WorkflowValidationError extends Error {
   readonly code='INVALID_ARGUMENT';
@@ -54,9 +55,9 @@ export class CSequenceBool implements IBool {
   }
   evaluate(): boolean { return this.values[Math.min(this.index++, this.values.length - 1)]; }
 }
-export interface Step { no: StepNo; job: CWorkflowTask; nextStepNo?: StepNo; products?:ProductShelf; artifactKey?:string; }
+export interface Step { no: StepNo; job: CWorkflowTask; nextStepNo?: StepNo; products?:ProductShelf; artifactKey?:string; outputProducts?:ProductShelf; }
 /** The factory is evaluated on each visit, never at graph validation time. */
-export interface JobFactoryStep { no:StepNo; createJob:()=>CWorkflowTask; nextStepNo?:StepNo; products?:ProductShelf; artifactKey?:string; }
+export interface JobFactoryStep { no:StepNo; createJob:()=>CWorkflowTask; nextStepNo?:StepNo; products?:ProductShelf; artifactKey?:string; outputProducts?:ProductShelf; }
 /** A durable inter-step boundary, never a partially executed Job. */
 export interface WaitStep { no:StepNo; waitReason:string; nextStepNo:StepNo; }
 export type WorkflowStep = Step | JobFactoryStep | WaitStep;
@@ -138,7 +139,8 @@ const activeRuns = new WeakMap<IWorkflowHistoryStore, Set<string>>();
 export class CWorkflow {
   private readonly steps = new Map<StepNo, WorkflowStep>();
   private running = false;
-  constructor(steps: readonly WorkflowStep[], private readonly store: IWorkflowHistoryStore) {
+  constructor(steps: readonly WorkflowStep[], private readonly store: IWorkflowHistoryStore, private readonly artifacts?:ArtifactManager) {
+    if(artifacts!==undefined&&!(artifacts instanceof ArtifactManager))throw new WorkflowValidationError();
     if(!Array.isArray(steps)||!store||typeof store.save!=='function'||typeof store.load!=='function')throw new WorkflowValidationError();
     for (const step of steps) {
       requireObject(step as unknown);
@@ -147,7 +149,7 @@ export class CWorkflow {
         if('job' in step||'createJob' in step||!Number.isSafeInteger(step.nextStepNo))throw new WorkflowValidationError();
       } else if ('createJob' in step) {
         if ('job' in step || typeof step.createJob!=='function')throw new WorkflowValidationError();
-      } else {requireJob(step.job);if(step.job instanceof CJobForm)createExecutionContext({products:step.products,artifactKey:step.artifactKey});}
+      } else {requireJob(step.job);if(step.job instanceof CJobForm)createExecutionContext({products:step.products,artifactKey:step.artifactKey,outputProducts:step.outputProducts});}
       if (!Number.isSafeInteger(step.no) || this.steps.has(step.no)) throw new Error(`Invalid or duplicate step: ${step.no}`);
       this.steps.set(step.no, step);
     }
@@ -198,12 +200,14 @@ export class CWorkflow {
     reserved.add(runId); this.running = true;
     try {
     const existing=await this.store.load(runId);
+    if(seed)this.artifacts?.assertResume(runId);
     if(operation){
       const claimed=await (this.store as IWaitingHistoryStore).claimWaiting(seed!,operation);
       if(claimed.replayed)return copySnapshot(claimed.snapshot);
       seed=copySnapshot(claimed.snapshot);startStepNo=seed.currentStepNo!;
     }else if(seed){if(JSON.stringify(existing)!==JSON.stringify(seed))throw Object.assign(new Error('Saved boundary changed'),{code:'RESUME_STATE_CHANGED'});}
     else if(existing)throw new Error(`Run ID already exists: ${runId}`);
+    this.artifacts?.bindRun(runId);
     let current: StepNo | null = startStepNo;
     const history: TraceEntry[] = seed?seed.history.map(h=>({...h})):[];
     const initialHistoryLength=history.length;
@@ -251,7 +255,7 @@ export class CWorkflow {
           const branch = await job.evaluateBranch();
           result = branch.result ? 'TRUE' : 'FALSE'; next = branch.target;
         } else {
-          if(job instanceof CJobForm)await job.execute(createExecutionContext({runId,stepNo:current,products:step.products,artifactKey:step.artifactKey}));
+          if(job instanceof CJobForm)await job.execute(createExecutionContext({runId,stepNo:current,products:step.products,artifactKey:step.artifactKey,outputProducts:step.outputProducts,artifacts:this.artifacts?.readPort()}));
           else await job.execute();
           next = step.nextStepNo ?? null;
         }

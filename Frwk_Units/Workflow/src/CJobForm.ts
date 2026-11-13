@@ -1,10 +1,11 @@
 export interface ProductReader { has(key:string):boolean; get(key:string):unknown; }
 export interface ProductShelf extends ProductReader { put(key:string,value:unknown):void|Promise<void>; }
+export interface ArtifactReadPort {hasBox(name:string):boolean;box(name?:string):ProductReader;}
 /** Structural contract retained for existing object-based definitions. */
 export interface JobFormDefinition<I,O> {readonly name:string;collect(products:ProductReader):I|Promise<I>;make(input:I):O|Promise<O>;record?(output:O):void|Promise<void>;}
 export type JobStatus='READY'|'RUNNING'|'COMPLETED'|'FAILED';
 export type Phase='prepare'|'collect'|'make'|'record'|'post'|'cleanup';
-export interface ExecutionOptions {products?:ProductShelf;artifactKey?:string;runId?:string;stepNo?:number;}
+export interface ExecutionOptions {products?:ProductShelf;artifactKey?:string;runId?:string;stepNo?:number;artifacts?:ArtifactReadPort;outputProducts?:ProductShelf;}
 /** One context per visit. It has no runner or transition methods. */
 export interface ExecutionContext extends Readonly<ExecutionOptions> {}
 interface MutableState {status:JobStatus;phase:Phase|null;recorded:{value:unknown}|null;cleanupWarning?:unknown;}
@@ -13,12 +14,14 @@ function invalid():never{throw Object.assign(new Error('Invalid JobForm input'),
 function state(context:ExecutionContext){const value=states.get(context);if(!value)invalid();return value;}
 export function createExecutionContext(options:ExecutionOptions={}):ExecutionContext {
   if(!options||typeof options!=='object'||Array.isArray(options))invalid();
-  const {products,artifactKey,runId,stepNo}=options;
+  const {products,artifactKey,runId,stepNo,artifacts,outputProducts}=options;
   if((products===undefined)!==(artifactKey===undefined))invalid();
   if(products!==undefined&&(!products||typeof products!=='object'||Array.isArray(products)||!['has','get','put'].every(k=>typeof products[k as keyof ProductShelf]==='function')||typeof artifactKey!=='string'||!artifactKey.trim()))invalid();
   if(runId!==undefined&&(typeof runId!=='string'||!runId.trim()))invalid();
   if(stepNo!==undefined&&!Number.isSafeInteger(stepNo))invalid();
-  const context=Object.freeze({products,artifactKey,runId,stepNo});
+  if(artifacts!==undefined&&(!artifacts||typeof artifacts.hasBox!=='function'||typeof artifacts.box!=='function'))invalid();
+  if(outputProducts!==undefined&&(!products||!outputProducts||!['has','get','put'].every(k=>typeof outputProducts[k as keyof ProductShelf]==='function')))invalid();
+  const context=Object.freeze({products,artifactKey,runId,stepNo,...(artifacts?{artifacts}:{}),...(outputProducts?{outputProducts}:{})});
   states.set(context,{status:'READY',phase:null,recorded:null});return context;
 }
 export function getExecutionState(context:ExecutionContext){const s=state(context);return {status:s.status,phase:s.phase};}
@@ -52,7 +55,7 @@ export abstract class CJobForm<I=void,O=I> {
   protected collect(_products:ProductReader,_context:ExecutionContext):I|Promise<I>{return undefined as I;}
   protected make(input:I,_context:ExecutionContext):O|Promise<O>{return input as unknown as O;}
   protected record(_output:O,_context:ExecutionContext):void|Promise<void>{}
-  protected post(output:O,context:ExecutionContext):void|Promise<void>{if(context.products)return context.products.put(context.artifactKey!,output);}
+  protected post(output:O,context:ExecutionContext):void|Promise<void>{const target=context.outputProducts??context.products;if(target)return target.put(context.artifactKey!,output);}
   protected cleanup(_context:ExecutionContext):void|Promise<void>{}
   async execute(context:ExecutionContext=createExecutionContext()):Promise<void>{
     await executeCMRP({prepare:()=>this.prepare(context),collect:r=>this.collect(r,context),make:i=>this.make(i,context),record:o=>this.record(o,context),post:o=>this.post(o,context),cleanup:()=>this.cleanup(context)},context);

@@ -229,3 +229,67 @@ Repositoryは構造的に適合する既存実装を引き続き利用できる�
 前回のMigrationは30登録・29 VERIFIED・完了承認0で、編集中だった本READMEの検証済みSHAは保留した。今回の資料更新後は、既存verifierが実ファイル・依存指紋・成功結果を確認した場合のみSHAを更新する。最新状態は`Migration/reports/status.md`と`latest.json`を参照し、過去の結果は更新前証跡に保持する。今回の再実行結果は完了報告と最新証跡で確認し、上表の前回結果と混同しない。
 
 名前付き成果物箱、共通成果物台の新しい管理規則、Event登録・通知・Workflow起動機構、postとEvent通知の正式な関係、Job／Check実装Version固定、DiagnosisのCMRP 6工程対応は未実装・未決定のまま。案B＋D、成果物配置とEventの設計決定、CMRP 6工程は変更していない。
+
+## Workflow成果物管理 Stage 1 — Memory実装（2026-11-12）
+
+本節は上記の未実装記録を更新する実装結果である。案BのArtifactManagerを正式Unitに追加し、既存Memory Shelfを実行インスタンスごとの共通台・名前付き箱として利用する。Event・永続化・新しい成果物配送規則は実装していない。
+
+### 公開APIと接続
+
+正式ルート`@arch026/workflow`からArtifactManager、ArtifactReadPort、ARTIFACT_DEFINITION_SCHEMA_VERSION、NativeJobFormRegistrationを利用できる。
+
+- `new ArtifactManager(boxes?: readonly string[], defaultShelf?: ProductShelf)`：defaultは予約名。省略時は独立したShelfを生成する。
+- `hasBox(name): boolean`、`reader(name = 'default'): ProductReader`、`shelf(name = 'default'): ProductShelf`、`readPort(): ArtifactReadPort`。
+- 読取Portは`hasBox(name)`と`box(name = 'default')`のみを提供する。各boxはhas/getだけを公開し、putを公開しない。ShelfのstructuredClone、has/getの既存意味を維持する。
+- `bindRun`／`assertResume`は実行境界向けinternalメソッドであり、業務処理からの利用入口ではない。
+
+Registryの新しい`nativeForms`は`Map<jobId, {form: CJobForm<unknown,unknown>, artifactKey: string}>`。正式Formは再利用し、訪問ごとに独立したExecutionContextを生成する。旧registry.jobsの構築時生成、jobFormsの訪問時生成とonCreate、Checkの構築時生成・訪問時評価は従来どおりである。
+
+Builderは構造検証・登録検査をFactory呼出し前に実施し、管理領域とStep出力先を接続する。構築結果の`artifacts`が管理領域である。Contextの`products`は共通台への互換入口、`outputProducts`は既定postの公開先、`artifacts`は名前付き箱の読取Portとなる。FormはWorkflow全体やArtifactManagerを保持しない。
+
+```typescript
+// collect(products, context)内。返値の型・業務検証はFormが担当する。
+const value = context.artifacts?.box('review').get('X');
+```
+
+### Definition Schema
+
+既存/1・WAITING対応/2を変更せず、`prototype-workflow/3`を追加した。依頼書の文字列`"2"`は提案例であり、既存の版規則に合わせた追加版とする。旧Schemaは新フィールドを引き続き拒否する。
+
+```json
+{
+  "schemaVersion": "prototype-workflow/3",
+  "definitionId": "artifact-example",
+  "definitionVersion": "1",
+  "startStepId": "produce",
+  "artifactBoxes": ["review"],
+  "steps": [
+    {"stepId":"produce","stepNo":10,"kind":"JOB","jobId":"sample.produce","output":{"box":"review"},"nextStepId":"consume"},
+    {"stepId":"consume","stepNo":20,"kind":"JOB","jobId":"sample.consume"}
+  ]
+}
+```
+
+/3はartifactBoxes必須（空配列可）。JOBのoutputは任意で、指定時は宣言済み箱またはdefaultだけを許可する。未宣言・重複・空名・不正型・未知フィールドを拒否する。出力先省略時はdefault。箱名とartifactKeyは別の識別子である。/3のJOBはnativeForms登録のみ対応し、旧CJob／構造型Form・同名の重複登録はUNSUPPORTED_ARTIFACT_JOBとして生成前に拒否する。旧経路への名前付き取得対応は未実装で、暗黙のdefault書込は行わない。
+
+### CMRPと実行独立性
+
+prepare → collect → make → record → post → cleanupの6工程、execute(context)のPromise<void>、業務Repository注入を維持し、initは追加していない。record成功後の内部成果と、postによる共有公開は別の境界である。既定postだけが解決済みShelfへartifactKeyで公開する。post上書き時に既定公開を自動追加しない。record失敗では非公開、post公開後の失敗・cleanup失敗では公開を取り消さない。同じ箱・同じキーは上書きする。
+
+同じDefinitionからの各構築は独立した管理領域を持つ。同一Formの並行利用・循環はContextで分離する。明示的な既存共有Shelf注入（registry.jobForms.products）はdefaultに限り維持する。独立したrunIdには新しい管理領域・構築結果を用いる。同一管理領域の別runId利用はARTIFACT_RUN_MISMATCHで拒否する。
+
+### WAITING／LIMIT_REACHEDと配布
+
+同一プロセス内で同じ管理領域を保持する再開に対応する。同じworkflowのresume／resumeWaitingは領域を保持する。再構築する場合はreconstructWorkflowの第5引数に元のartifactsを渡す（第4引数continuationは既存の履歴契約）。loadWorkflowには第6引数として渡せる。履歴だけを渡した再構築、未使用の新領域からのresumeはARTIFACT_RESTORE_UNSUPPORTEDで拒否し、WAITING claim前に停止する。
+
+プロセス再起動後の箱復元・JSONからの復元は保証しない。Snapshotや既存Store保存はShelf永続化ではない。SQLite／WAITING StoreのSchemaは変更していない。旧SchemaのデフォルトShelf再開経路は変更していない。
+
+正式パッケージの一時pack・展開環境で、新APIの実行と型利用を試験する。旧workflow-unit生成器は新しい内部モジュールを収録し、保全済みアーカイブを上書きしないよう候補を`0.3.0-framework.6`へ更新した。旧配布ルートのCJobForm構造型契約を新しい実装基底クラスへ置換する変更は行っていない。
+
+### 今回の検証と残課題
+
+Unitは旧28件＋新18件の46 PASS。Definition・CMRP・Factory・SQLite・WAITING／再開関連181 PASS、配布6 PASS（正式パッケージの独立実行・型利用を含む）。Build・型検査もPASS。試験には重複があり単純加算しない。最終Migration状態はMigration/reports/status.mdを参照する。
+
+後続課題は成果物の永続化・再起動復元、旧構造型Formへの名前付き読取対応である。Event機構・postとの正式な関係・Diagnosisの6工程対応等の従来課題は未変更。
+
+Migration初回検証では別プロセス復元拒否試験が既存の子プロセス禁止ガードによりFAILとなった。ガードは変更せず、この1件を通常の配布試験へ移した。初回証跡はMigration/reports/history/artifact-stage1-first-verification.jsonに保持し、最新再検証と区別する。

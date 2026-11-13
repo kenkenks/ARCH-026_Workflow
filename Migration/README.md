@@ -662,3 +662,23 @@ Workflow Unit 28 PASS、Factory・SQLite・WAITING・再開等148 PASS、Definit
 既存migration:verifyは7グループ計83 PASS（DB 7・Core 3・Member 3・TimeTrip 17・Workflow 28・公開API 8・Member Schema 17）。更新後READMEの実SHAを含む指紋で再検証し、30/30 VERIFIED・警告0・未登録0・COMPLETE承認0を確認した。上記の28件等と重複するため合計試験数には加算しない。過去の29 VERIFIEDという記述は前回時点の履歴として保持する。
 
 ルート全回帰541件、配布4件、独立パッケージ実行・型利用は前回の結果を記録したもので、今回は再実行していない。Firestore Emulatorは引き続き未実施。今回、ソース・API・実行方式の修正や配布物再生成、DB Schema Migration・実データMigration、Stage・Commit・Pushは行っていない。
+
+## Workflow成果物管理 Stage 1（2026-11-12）
+
+正式Workflow UnitへArtifactManagerを追加した。既存Memory Shelfを再利用し、実行別default台・名前付き箱、Definition /3のoutput指定、正式FormのContext読取Portを接続した。既存/1・/2、Factoryタイミング、CMRP6工程、executeのPromise<void>、業務DB依存の注入契約を維持する。詳しい正式API・Definition・再開制限はFrwk_Units/Workflow/docs/README.md末尾を参照。
+
+同じプロセス内の管理領域を保持したWAITING／LIMIT_REACHED再開が対象で、領域を失った再開はclaim／Job実行前に拒否する。SQLite／WAITING Storeの永続化Schemaは未変更で、Snapshot保存を名前付き箱の永続化とは扱わない。旧経路に新しい箱指定を黙って適用しない。
+
+Migrationには新規実装ArtifactManager.tsと専用試験artifacts.test.cjsをNEWとして追加した。既存資産・承認を維持し、Workflowの検証件数を28から46へ更新する。更新前のRegistry・最新証跡・状態レポート原文とSHAをreports/history/artifact-stage1-before.jsonへ保全した。検証済みSHAは既存verifierが実ファイル・入力指紋・PASSに基づいて更新する。COMPLETE承認は付与しない。最新の件数・警告・試験結果はreports/status.mdとlatest.jsonを参照し、過去の30登録／28件試験の記述は履歴として保持する。
+
+旧配布候補framework.5等の既存アーカイブは保全し、新候補framework.6で生成器の内部モジュール収録を確認する。正式パッケージは一時領域へpack・展開し、開発元ソースへの相対参照なしに新APIの実行と型利用を検証する。
+
+残作業：成果物永続化・再起動復元、旧構造型Form対応。Event機構・Diagnosis等の別工程は今回着手しない。移植検証件数はFramework全体の完成率を意味しない。Stage・Commit・Pushは行わない。
+
+Migration初回検証では別プロセス復元拒否試験が既存の子プロセス禁止ガードによりFAILとなった。ガードは変更せず、この1件を通常の配布試験へ移した。初回証跡はMigration/reports/history/artifact-stage1-first-verification.jsonに保持し、最新再検証と区別する。
+
+### Stage 1 最終検証結果
+
+今回の最終状態は32登録／32 VERIFIED、警告0、未登録0、COMPLETE承認0。Migration資産検証は7グループ101 PASS（DB7、Core3、Member3、TimeTrip17、Workflow46、公開API8、Member Schema17）。Migration管理30 PASS、関連回帰181 PASS、配布6 PASS、ルート全回帰541 PASS。Build・Unit Build・両TypeScript型検査・変更JS構文検査・git diff --checkもPASS。重複する試験は単純加算しない。初回のMigration検証FAILは上記保存証跡に保持し、最終試験のFAIL／SKIPは0。Firestore Emulator試験は今回対象外で未実施。
+
+開始時HEAD f2b3e6b1da3827c861ed3a477bfc166af059724aを維持し、Stageは空。保留5文書と既存配布10版（tgz・記録各10ファイル）のSHAが開始時と一致することを確認した。旧道場側を変更せず、実DB・外部サービス・Event機構へ接続していない。新しい配布候補framework.6のSHA-256は2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d。生成物と実行ログは既存のignore方針のまま扱い、Commit／Pushは未実施。

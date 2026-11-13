@@ -4,3 +4,5 @@ export type {ProductReader,ProductShelf,ExecutionOptions,ExecutionContext,JobFor
 export * from './Definition';
 export * from './WorkflowRegistry';
 export * from './WorkflowBuilder';
+export {ArtifactManager} from './ArtifactManager';
+export type {ArtifactReadPort} from './CJobForm';

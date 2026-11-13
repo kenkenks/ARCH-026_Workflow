@@ -1,8 +1,8 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
-const root=path.resolve(__dirname,'..'),version='0.3.0-framework.5',name='@arch026/workflow-unit';
+const root=path.resolve(__dirname,'..'),version='0.3.0-framework.6',name='@arch026/workflow-unit';
 const api={workflow:['WorkflowValidationError','CWorkflowTask','CJob','CDummyJob','CCheckJob','CSequenceBool','WorkflowRunError','CMemoryHistoryStore','CWorkflow','CWorkflowMonitor'],
- 'job-form':['createMemoryProductShelf','bindJobForm'],definition:['DEFINITION_SCHEMA_VERSION','WAITING_DEFINITION_SCHEMA_VERSION','DefinitionError','validateDefinitionKey','validatePrototypeDefinition','reconstructWorkflow','loadWorkflow'],diagnosis:['diagnoseSavedRun']};
+ 'job-form':['createMemoryProductShelf','bindJobForm'],definition:['DEFINITION_SCHEMA_VERSION','WAITING_DEFINITION_SCHEMA_VERSION','ARTIFACT_DEFINITION_SCHEMA_VERSION','DefinitionError','validateDefinitionKey','validatePrototypeDefinition','reconstructWorkflow','loadWorkflow'],diagnosis:['diagnoseSavedRun']};
 const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
 function execute(exe,args,cwd=root){const r=cp.spawnSync(exe,args,{cwd,encoding:'utf8',windowsHide:true});if(r.status!==0)throw Error(r.stderr||r.stdout||'command failed');return r.stdout;}
 function build(output=path.join(root,'runtime-data/workflow-unit')){
@@ -14,7 +14,7 @@ function build(output=path.join(root,'runtime-data/workflow-unit')){
   for(const ext of ['js','d.ts'])put(`dist/src/prototype/${base}.${ext}`,fs.readFileSync(path.join(root,`runtime-data/workflow-unit-build/src/prototype/${base}.${ext}`)));
  }
  // Prototype paths are compatibility entries; include their canonical Unit implementation.
- for(const base of ['CWorkflow','CJobForm','Definition','WorkflowRegistry','WorkflowBuilder']){
+ for(const base of ['CWorkflow','CJobForm','ArtifactManager','Definition','WorkflowRegistry','WorkflowBuilder']){
   const src=`Frwk_Units/Workflow/src/${base}.ts`;sources[src]=digest(fs.readFileSync(path.join(root,src)));
   for(const ext of ['js','d.ts'])put(`dist/Frwk_Units/Workflow/src/${base}.${ext}`,fs.readFileSync(path.join(root,`runtime-data/workflow-unit-build/Frwk_Units/Workflow/src/${base}.${ext}`)));
  }

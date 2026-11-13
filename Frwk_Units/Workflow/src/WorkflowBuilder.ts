@@ -1,18 +1,29 @@
 import {CJob,CWorkflowTask,CCheckJob,CWorkflow} from './CWorkflow';
 import {CJobForm as ExecutableJobForm} from './CJobForm';
 import type {IWorkflowHistoryStore,WorkflowStep,TraceEntry} from './CWorkflow';
-import {validatePrototypeDefinition,validateDefinitionKey,DefinitionError} from './Definition';
+import {validatePrototypeDefinition,validateDefinitionKey,DefinitionError,ARTIFACT_DEFINITION_SCHEMA_VERSION} from './Definition';
+import {ArtifactManager} from './ArtifactManager';
 import type {DefinitionRepository,PrototypeDefinition} from './Definition';
 import type {WorkflowRegistry} from './WorkflowRegistry';
 
-export function reconstructWorkflow(input: unknown, registry: WorkflowRegistry, store: IWorkflowHistoryStore, continuation?:{history:readonly TraceEntry[]}) {
+export function reconstructWorkflow(input: unknown, registry: WorkflowRegistry, store: IWorkflowHistoryStore, continuation?:{history:readonly TraceEntry[]}, artifacts?:ArtifactManager) {
   const definition = validatePrototypeDefinition(input);
+  const managed=definition.schemaVersion===ARTIFACT_DEFINITION_SCHEMA_VERSION;
+  if(artifacts!==undefined&&(!managed||!(artifacts instanceof ArtifactManager)))throw new DefinitionError('INVALID_ARTIFACT_MANAGER');
+  if(managed&&continuation&&!artifacts)throw new DefinitionError('ARTIFACT_RESTORE_UNSUPPORTED');
   // Resolve all names before invoking factories; an unsupported name never partially executes jobs.
   for (const step of definition.steps) {
+    if(managed&&step.kind==='JOB'){
+      const registration=registry.nativeForms?.get(step.jobId);
+      if(!registration||!(registration.form instanceof ExecutableJobForm)||registry.jobs.has(step.jobId)||registry.jobForms?.definitions.has(step.jobId))throw new DefinitionError('UNSUPPORTED_ARTIFACT_JOB');
+      validateDefinitionKey(registration.artifactKey);continue;
+    }
     if (step.kind === 'JOB' && !registry.jobs.has(step.jobId) && !registry.jobForms?.definitions.has(step.jobId)) throw new DefinitionError('UNSUPPORTED_JOB');
     if(step.kind==='JOB'&&registry.jobs.has(step.jobId)&&registry.jobForms?.definitions.has(step.jobId))throw new DefinitionError('AMBIGUOUS_JOB');
     if (step.kind === 'CHECK_BOOL' && !registry.checks.has(step.checkId)) throw new DefinitionError('UNSUPPORTED_CHECK');
   }
+  const manager=managed?(artifacts??new ArtifactManager(definition.artifactBoxes,registry.jobForms?.products)):undefined;
+  if(manager)for(const box of definition.artifactBoxes!)if(!manager.hasBox(box))throw new DefinitionError('UNKNOWN_ARTIFACT_BOX');
   const no = new Map(definition.steps.map(step => [step.stepId, step.stepNo]));
   const steps: WorkflowStep[] = definition.steps.map(step => {
     const context = { definitionId: definition.definitionId, definitionVersion: definition.definitionVersion, stepId: step.stepId };
@@ -22,6 +33,7 @@ export function reconstructWorkflow(input: unknown, registry: WorkflowRegistry, 
       if (!condition || typeof condition.evaluate !== 'function') throw new DefinitionError('INVALID_CHECK_FACTORY');
       return { no: step.stepNo, job: new CCheckJob(step.stepId, condition, no.get(step.falseStepId)!, no.get(step.trueStepId)!) };
     }
+    if(manager){const r=registry.nativeForms!.get(step.jobId)!;return {no:step.stepNo,createJob:()=>r.form,products:manager.shelf(),outputProducts:manager.shelf(step.output?.box),artifactKey:r.artifactKey,...(step.nextStepId===undefined?{}:{nextStepNo:no.get(step.nextStepId)!})};}
     const registration=registry.jobForms?.definitions.get(step.jobId);
     if(registration){
       const {form,artifactKey}=registration,products=registry.jobForms!.products,onCreate=registry.jobForms!.onCreate;
@@ -39,12 +51,12 @@ export function reconstructWorkflow(input: unknown, registry: WorkflowRegistry, 
     if ((!(job instanceof CWorkflowTask) && !(job instanceof ExecutableJobForm)) || job instanceof CCheckJob || typeof job.execute !== 'function') throw new DefinitionError('INVALID_JOB_FACTORY');
     return { no: step.stepNo, job, ...(step.nextStepId === undefined ? {} : { nextStepNo: no.get(step.nextStepId)! }) };
   });
-  return { definition, workflow: new CWorkflow(steps, store), startStepNo: no.get(definition.startStepId)! };
+  return { definition, workflow: new CWorkflow(steps, store,manager), startStepNo: no.get(definition.startStepId)!,...(manager?{artifacts:manager}:{}) };
 }
-export async function loadWorkflow(repository: DefinitionRepository<PrototypeDefinition>, id: string, version: string, registry: WorkflowRegistry, store: IWorkflowHistoryStore) {
+export async function loadWorkflow(repository: DefinitionRepository<PrototypeDefinition>, id: string, version: string, registry: WorkflowRegistry, store: IWorkflowHistoryStore, artifacts?:ArtifactManager) {
   validateDefinitionKey(id); validateDefinitionKey(version);
   const definition = await repository.get(id, version);
   if (!definition) throw new DefinitionError('DEFINITION_NOT_FOUND');
   if (definition.definitionId !== id || definition.definitionVersion !== version) throw new DefinitionError('DEFINITION_IDENTITY_MISMATCH');
-  return reconstructWorkflow(definition, registry, store);
+  return reconstructWorkflow(definition, registry, store,undefined,artifacts);
 }
