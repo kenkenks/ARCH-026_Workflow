@@ -1,11 +1,15 @@
 'use strict';
-const {randomUUID}=require('node:crypto');
+const {randomUUID,createHash}=require('node:crypto');
 const {isDeepStrictEqual:equal}=require('node:util');
 const {CMemoryHistoryStore}=require('../../../dist/src/prototype/workflow');
 const {validateArtifactSnapshot}=require('../../../dist/Frwk_Units/Workflow/src/ArtifactSnapshot');
+const {validatePrototypeDefinition}=require('../../../dist/src/prototype/definition');
 const copy=x=>structuredClone(x);
 const fail=code=>{throw Object.assign(new Error(code),{code});};
 const text=x=>typeof x==='string'&&!!x.trim()&&x.length<=256;
+// Existing contract: SHA-256 of JSON.stringify(validated Definition), as in Firestore composition/store.
+const definitionDigest=input=>createHash('sha256').update(JSON.stringify(validatePrototypeDefinition(input))).digest('hex');
+function limitOperation(value,runId){if(!value||Object.keys(value).sort().join(',')!=='expectedRevision,operationId,runId'||value.runId!==runId||!text(value.operationId)||!Number.isSafeInteger(value.expectedRevision)||value.expectedRevision<1)fail('INVALID_ARGUMENT');return copy(value);}
 function json(x,seen=new Set()){
  if(x===null||typeof x==='boolean'||typeof x==='string')return;
  if(typeof x==='number'&&Number.isFinite(x))return;
@@ -43,11 +47,15 @@ function validateCheckpointConsistency(row){
 class MemoryLifecycleBackend {
  constructor({now=Date.now}={}){this.rows=new Map();this.now=now;}
  read(id){return copy(this.rows.get(id));}
+ inspect(id,action){return action(this.read(id),this.now());}
  update(id,action,hooks={}){const row=copy(this.rows.get(id));const next=action(row,this.now());hooks.beforeCommit?.();this.rows.set(id,copy(next));hooks.afterCommit?.();return copy(next);}
  close(){}
 }
 /** Per-host capability. A shared backend does not share credentials across hosts. */
 class WaitingHistoryStore {
+ #checkpointClaim=null;
+ #executionOperationId=null;
+ get requiresExecutionOwnership(){return true;}
  constructor(backend,{runId,definitionId,definitionVersion,definitionDigest,ownerId=randomUUID(),leaseMs=5000,hooks={}}){
   if(![runId,definitionId,definitionVersion,definitionDigest,ownerId].every(text)||!Number.isSafeInteger(leaseMs)||leaseMs<1||leaseMs>3600000)fail('INVALID_ARGUMENT');
   Object.assign(this,{backend,runId,definitionId,definitionVersion,definitionDigest,ownerId,leaseMs,hooks});this.credential=null;this.revision=0;this.poisoned=false;
@@ -72,6 +80,7 @@ class WaitingHistoryStore {
   const ids=new Set();
   for(const op of row.operations){if(!op||!text(op.operationId)||ids.has(op.operationId)||!['START','RESUME_WAITING','RESUME_LIMIT'].includes(op.kind)||!['RUNNING','FINISHED'].includes(op.status))fail('DATA_CORRUPT');ids.add(op.operationId);
    if(op.kind==='RESUME_WAITING'){try{operation(op.request,this.runId);if(op.request.operationId!==op.operationId)fail('DATA_CORRUPT');}catch{fail('DATA_CORRUPT');}}
+   if(row.checkpoint&&op.kind==='RESUME_LIMIT'){try{limitOperation(op.request,this.runId);if(op.request.operationId!==op.operationId)fail('DATA_CORRUPT');}catch{fail('DATA_CORRUPT');}}
    if(op.status==='FINISHED'&&(!op.snapshot||!Number.isSafeInteger(op.revision)||op.revision<1||op.revision>row.revision))fail('DATA_CORRUPT');
    if(op.snapshot){const s=snapshot(op.snapshot);if(s.runId!==this.runId||s.status==='RUNNING')fail('DATA_CORRUPT');}
   }
@@ -83,15 +92,79 @@ class WaitingHistoryStore {
  }
  read(){return copy(this.validate(this.backend.read(this.runId)));}
  load(id){if(id!==this.runId)fail('RUN_MISMATCH');return this.read()?.snapshot;}
- /** Read-back verification only; never restores a Manager, binds runId or claims a run. */
+ /** Inspection DTO only; this method never restores a Manager, binds runId or claims a run. */
  readCheckpoint(){const row=this.read();if(!row?.checkpoint)return undefined;const c=row.checkpoint;return copy({formatVersion:c.formatVersion,runId:row.runId,
   definition:{id:row.definitionId,version:row.definitionVersion,digest:row.definitionDigest},workflowSnapshot:row.snapshot,
   artifactSnapshot:validateArtifactSnapshot(c.artifactSnapshot),revision:row.revision,operationIdentifier:c.operationIdentifier,owner:row.owner});}
+ validateCheckpointDefinition(checkpoint,input){
+  if(!checkpoint||checkpoint.runId!==this.runId||checkpoint.workflowSnapshot?.runId!==this.runId)fail('RUN_MISMATCH');
+  if(checkpoint.formatVersion!=='workflow-checkpoint/1'||!Number.isSafeInteger(checkpoint.revision)||checkpoint.revision<1||!text(checkpoint.operationIdentifier))fail('DATA_CORRUPT');
+  snapshot(checkpoint.workflowSnapshot);
+  const d=validatePrototypeDefinition(input),identity=checkpoint.definition;
+  if(d.schemaVersion!=='prototype-workflow/3'||d.definitionId!==this.definitionId||d.definitionVersion!==this.definitionVersion||
+    !identity||identity.id!==d.definitionId||identity.version!==d.definitionVersion||identity.digest!==this.definitionDigest||definitionDigest(d)!==identity.digest)fail('DEFINITION_CONFLICT');
+  const artifacts=validateArtifactSnapshot(checkpoint.artifactSnapshot),boxes=artifacts.boxes.map(b=>b.name);
+  if(boxes.length!==d.artifactBoxes.length+1||d.artifactBoxes.some(b=>!boxes.includes(b))||!boxes.includes('default'))fail('ARTIFACT_SNAPSHOT_BOX_MISMATCH');
+ }
+ async claimCheckpoint(checkpoint,definition,artifacts,request){
+  if(this.#checkpointClaim)fail('RUN_BUSY');
+  this.validateCheckpointDefinition(checkpoint,definition);
+  const managerArtifacts=validateArtifactSnapshot(artifacts);
+  let value;
+  if(request?.kind==='WAITING'&&Object.keys(request).sort().join(',')==='kind,operation')value=operation(request.operation,this.runId);
+  else if(request?.kind==='LIMIT_REACHED'&&Object.keys(request).sort().join(',')==='expectedRevision,kind,operationId')value=limitOperation({runId:this.runId,operationId:request.operationId,expectedRevision:request.expectedRevision},this.runId);
+  else fail('INVALID_ARGUMENT');
+  this.#checkpointClaim={checkpoint:copy(checkpoint),definition:copy(definition),artifacts:managerArtifacts,request:value,kind:request.kind};
+  try{
+   // Explicitly route through the existing claim API. No implicit LIMIT operation ID.
+   return request.kind==='WAITING'?await this.claimWaiting(checkpoint.workflowSnapshot,value):this.claimLimit(checkpoint.workflowSnapshot,value.operationId);
+  }finally{this.#checkpointClaim=null;}
+ }
+ #claimArtifactOperation(observed){
+  const context=this.#checkpointClaim;if(!context)fail('ARTIFACT_CHECKPOINT_RESUME_UNSUPPORTED');
+  const {checkpoint,definition,artifacts,request,kind}=context,id=request.operationId,operationKind=kind==='WAITING'?'RESUME_WAITING':'RESUME_LIMIT';
+  const receipt=op=>{if(op.kind!==operationKind||!equal(op.request,request))fail('OPERATION_CONFLICT');if(op.status!=='FINISHED')fail('OPERATION_IN_PROGRESS');return copy(op.snapshot);};
+  const prior=observed.operations.find(o=>o.operationId===id);if(prior)return {replayed:true,snapshot:receipt(prior)};
+  let replay,row;
+  try{row=this.mutate((row,now)=>{
+   const existing=row?.operations.find(o=>o.operationId===id);if(existing){replay=receipt(existing);fail('OPERATION_ALREADY_APPLIED');}
+   if(!row?.checkpoint)fail('CHECKPOINT_NOT_FOUND');
+   this.validateCheckpointDefinition(checkpoint,definition);
+   if(row.revision!==request.expectedRevision)fail('REVISION_CONFLICT');
+   if(row.owner.state!=='RELEASED')fail('CLAIM_BUSY');
+   if(kind==='WAITING'&&row.snapshot.status!=='WAITING'||kind==='LIMIT_REACHED'&&row.snapshot.status!=='LIMIT_REACHED')fail('CHECKPOINT_NOT_RESUMABLE');
+   if(kind==='WAITING'&&row.snapshot.waiting.generation!==request.expectedWaitGeneration)fail('STALE_WAIT_GENERATION');
+   const current={formatVersion:row.checkpoint.formatVersion,runId:row.runId,definition:{id:row.definitionId,version:row.definitionVersion,digest:row.definitionDigest},workflowSnapshot:row.snapshot,
+    artifactSnapshot:validateArtifactSnapshot(row.checkpoint.artifactSnapshot),revision:row.revision,operationIdentifier:row.checkpoint.operationIdentifier,owner:row.owner};
+   if(!equal(current,checkpoint))fail('RESUME_STATE_CHANGED');
+   if(!equal(artifacts,checkpoint.artifactSnapshot))fail('RESUME_STATE_CHANGED');
+   row.owner=this.newOwner(row.owner,now);row.revision++;row.updatedAt=new Date(now).toISOString();
+   row.operations.push({operationId:id,kind:operationKind,request:copy(request),status:'RUNNING'});row.activeOperationId=id;
+   if(kind==='WAITING'){row.input=copy(request.result);const {waiting,...rest}=row.snapshot;row.snapshot={...rest,status:'RUNNING',currentStepNo:waiting.nextStepNo};this.event(row,'WAIT_RESOLVED',now,{generation:waiting.generation,operationId:id});}
+   else{row.snapshot={...row.snapshot,status:'RUNNING'};this.event(row,'LIMIT_RESUMED',now,{operationId:id});}
+   row.checkpoint={...row.checkpoint,workflowSnapshot:copy(row.snapshot),revision:row.revision,operationIdentifier:id};
+   validateCheckpointConsistency(row);return row;
+  });}catch(e){if(e.code==='OPERATION_ALREADY_APPLIED'&&replay)return {replayed:true,snapshot:replay};throw e;}
+  this.adopt(row);return {replayed:false,snapshot:copy(row.snapshot)};
+ }
  event(row,kind,now,extra={}){row.events.push({sequence:row.events.length+1,kind,at:new Date(now).toISOString(),...extra});}
  guarded(row,now){
   const o=row?.owner,c=this.credential;
   if(!o||!c||o.state!=='ACTIVE'||o.ownerId!==this.ownerId||o.token!==c.token||o.fence!==c.fence)fail('FENCED');
   if(o.expiresAt<=now)fail('LEASE_EXPIRED');if(row.revision!==this.revision)fail('REVISION_CONFLICT');
+ }
+ /** Read-only validation against the backend's clock and authoritative row. No renew/claim/save. */
+ assertCanExecuteStep(value){
+  const expected=snapshot(value);if(expected.runId!==this.runId)fail('RUN_MISMATCH');
+  if(this.poisoned)fail('PERSISTENCE_UNCERTAIN');
+  if(typeof this.backend.inspect!=='function')fail('EXECUTION_OWNERSHIP_UNAVAILABLE');
+  return this.backend.inspect(this.runId,(row,now)=>{
+   this.validate(row);this.guarded(row,now);
+   if(!this.#executionOperationId||row.activeOperationId!==this.#executionOperationId)fail('OPERATION_CONFLICT');
+   const op=row.operations.find(o=>o.operationId===this.#executionOperationId);
+   if(!op||op.status!=='RUNNING'||row.snapshot?.status!=='RUNNING')fail('CHECKPOINT_NOT_RESUMABLE');
+   if(!equal(row.snapshot,expected))fail('RESUME_STATE_CHANGED');
+  });
  }
  mutate(action){
   if(this.poisoned)fail('PERSISTENCE_UNCERTAIN');let wrote=false;
@@ -102,7 +175,7 @@ class WaitingHistoryStore {
   }
  }
  newOwner(old,now){const fence=(old?.fence||0)+1;if(!Number.isSafeInteger(fence))fail('FENCE_EXHAUSTED');return {state:'ACTIVE',ownerId:this.ownerId,token:randomUUID(),fence,expiresAt:now+this.leaseMs};}
- adopt(row){this.credential=copy(row.owner);this.revision=row.revision;return copy(row);}
+ adopt(row){this.credential=copy(row.owner);this.revision=row.revision;this.#executionOperationId=row.activeOperationId;return copy(row);}
  claimStart(operationId=randomUUID()){
   if(!text(operationId))fail('INVALID_ARGUMENT');
   return this.adopt(this.mutate((old,now)=>{
@@ -145,9 +218,10 @@ class WaitingHistoryStore {
  }
  /** Caller has already authorized this operation; payload and concurrency remain checked here. */
  async claimWaiting(saved,request){
-  const value=operation(request,this.runId),s=snapshot(saved);if(s.status!=='WAITING')fail('NOT_WAITING');
+  const value=operation(request,this.runId),s=snapshot(saved);
   const observed=this.read(),prior=observed?.operations.find(x=>x.operationId===value.operationId);
-  if(observed?.checkpoint)fail('ARTIFACT_CHECKPOINT_RESUME_UNSUPPORTED');
+  if(observed?.checkpoint)return this.#claimArtifactOperation(observed);
+  if(s.status!=='WAITING')fail('NOT_WAITING');
   if(prior){if(!equal(prior.request,value))fail('OPERATION_CONFLICT');if(prior.status!=='FINISHED')fail('OPERATION_IN_PROGRESS');return {replayed:true,snapshot:copy(prior.snapshot)};}
   let replay,row;
   try{row=this.mutate((row,now)=>{
@@ -170,6 +244,7 @@ class WaitingHistoryStore {
  }
  claimLimit(saved,operationId=randomUUID()){
   if(!text(operationId))fail('INVALID_ARGUMENT');const s=snapshot(saved);
+  const observed=this.read();if(observed?.checkpoint)return this.#claimArtifactOperation(observed);
   return this.adopt(this.mutate((row,now)=>{if(!row||s.status!=='LIMIT_REACHED'||!equal(row.snapshot,s)||row.owner.state!=='RELEASED')fail('RESUME_STATE_CHANGED');
    if(row.checkpoint)fail('ARTIFACT_CHECKPOINT_RESUME_UNSUPPORTED');
    if(row.operations.some(x=>x.operationId===operationId))fail('OPERATION_CONFLICT');row.owner=this.newOwner(row.owner,now);row.activeOperationId=operationId;
@@ -180,4 +255,4 @@ class WaitingHistoryStore {
  heartbeat(){const row=this.mutate((r,now)=>{this.guarded(r,now);r.owner.expiresAt=Math.max(r.owner.expiresAt+1,now+this.leaseMs);r.updatedAt=new Date(now).toISOString();return r;});return copy(row.owner);}
  close(){this.backend.close();}
 }
-module.exports={MemoryLifecycleBackend,WaitingHistoryStore};
+module.exports={MemoryLifecycleBackend,WaitingHistoryStore,definitionDigest};

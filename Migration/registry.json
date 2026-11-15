@@ -191,6 +191,49 @@
         "dist/src/prototype/workflow.js"
       ],
       "expectedTests": 39
+    },
+    {
+      "persistent": true,
+      "inputs": [
+        "tests/workflow-artifact-resume.test.cjs",
+        "tests/workflow-artifact-resume-process.test.cjs",
+        "tests/workflow-artifact-resume",
+        "src/adapters/workflow-waiting/lifecycle.cjs",
+        "src/adapters/workflow-waiting/sqlite.cjs",
+        "src/adapters/simpledb/database.cjs",
+        "Frwk_Units/Workflow/src",
+        "Frwk_Units/Workflow/dist",
+        "dist/Frwk_Units/Workflow/src",
+        "dist/src/prototype/workflow.js",
+        "dist/src/prototype/definition.js"
+      ],
+      "id": "artifact-resume",
+      "tests": [
+        "tests/workflow-artifact-resume.test.cjs"
+      ],
+      "kind": "node-test",
+      "expectedTests": 33
+    },
+    {
+      "id": "execution-ownership",
+      "persistent": true,
+      "kind": "node-test",
+      "expectedTests": 19,
+      "inputs": [
+        "tests/workflow-execution-ownership.test.cjs",
+        "tests/workflow-artifact-resume",
+        "src/adapters/workflow-waiting/lifecycle.cjs",
+        "src/adapters/workflow-waiting/sqlite.cjs",
+        "src/adapters/simpledb/database.cjs",
+        "Frwk_Units/Workflow/src",
+        "Frwk_Units/Workflow/dist",
+        "dist/Frwk_Units/Workflow/src",
+        "dist/src/prototype/workflow.js",
+        "dist/src/prototype/definition.js"
+      ],
+      "tests": [
+        "tests/workflow-execution-ownership.test.cjs"
+      ]
     }
   ],
   "assets": [
@@ -422,7 +465,7 @@
       "destination": "Frwk_Units/Workflow/src/CWorkflow.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "45549657e655977507b56a858095271912bfe693bea717b4cbbeb769b0efb462",
-      "destinationVerifiedSha256": "c90d9cc5e9bde28e3c55e78558b6b76ece69b018373e10d635f56d26afa75d0a",
+      "destinationVerifiedSha256": "01a7cfd9ebdf0cc1e8599654d2afd4ac3d4051212d0d0c61ee5caaf1a0637f17",
       "verifications": [
         "workflow"
       ],
@@ -547,7 +590,7 @@
       "destination": "Frwk_Units/Workflow/docs/README.md",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "6325614e48543d17c8ff87f807d6c8ebf824895f16a29b51974ce49d8544ef57",
+      "destinationVerifiedSha256": "1a28249c2f28c16d84c67af13779522aa688504c64799302470f6d98128f427b",
       "verifications": [
         "workflow"
       ],
@@ -852,7 +895,7 @@
       "destination": "Frwk_Units/Workflow/src/WorkflowBuilder.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": "b564f1c57e66d7aefbaee02f7bcfaac78ff292ecbdec9efcf946028d362f4cce",
-      "destinationVerifiedSha256": "2fcc2f35c84d26cc3d8c88f8d56f34b22313c1f966d264feecf617262177beee",
+      "destinationVerifiedSha256": "8eab4b47338255503fde5b25413a9ac6f8db8577b45617f0f0cd2d973044e296",
       "verifications": [
         "workflow"
       ],
@@ -901,7 +944,7 @@
       "destination": "Frwk_Units/Workflow/src/ArtifactManager.ts",
       "unit": "Workflow",
       "sourceBaselineSha256": null,
-      "destinationVerifiedSha256": "5514c4dc01227cd8cf004a6656aa9ce840b6d06ce96e2a081a904cfc3f400d4c",
+      "destinationVerifiedSha256": "73059c43064d8669d2d52876a38a00aa5f40f997a2ad631c6b59d7d68986acc4",
       "verifications": [
         "workflow"
       ],
@@ -1006,6 +1049,52 @@
         "approved": false,
         "destinationSha256": null,
         "verificationFingerprint": null
+      }
+    },
+    {
+      "repository": "framework",
+      "source": null,
+      "approval": {
+        "destinationSha256": null,
+        "approved": false,
+        "verificationFingerprint": null
+      },
+      "unit": "Workflow",
+      "verifications": [
+        "artifact-resume"
+      ],
+      "id": "workflow-new-tests-artifact-resume",
+      "decision": {
+        "notes": "Stage 2-2B guarded in-process SQLite restore/claim tests. Child-process fixtures are fingerprinted inputs, but actual process tests run separately outside the unchanged network/child-process guard; see Workflow README and session evidence.",
+        "analyzed": true,
+        "disposition": "ACTIVE"
+      },
+      "origin": "NEW",
+      "destination": "tests/workflow-artifact-resume.test.cjs",
+      "destinationVerifiedSha256": "ea052d7b3e889cc3cc8543071e3b8ccf411e7dbf87b8967a6037e084c4e1193a",
+      "sourceBaselineSha256": null
+    },
+    {
+      "destination": "tests/workflow-execution-ownership.test.cjs",
+      "repository": "framework",
+      "source": null,
+      "destinationVerifiedSha256": "5e2e9d21524afdf1ffadf2d9c841ebc0d84873bcc2838ebd0faaecb8d0ff3cf0",
+      "origin": "NEW",
+      "id": "workflow-new-tests-execution-ownership",
+      "unit": "Workflow",
+      "decision": {
+        "disposition": "ACTIVE",
+        "analyzed": true,
+        "notes": "Stage 2-2B pre-execution ownership checks. Local SQLite synthetic tests cover expired lease, stale host, revision/operation changes, Hook/Factory/Check boundaries, unknown inspection and Port requirements. No external-side-effect atomicity guarantee."
+      },
+      "verifications": [
+        "execution-ownership"
+      ],
+      "sourceBaselineSha256": null,
+      "approval": {
+        "verificationFingerprint": null,
+        "destinationSha256": null,
+        "approved": false
       }
     }
   ]

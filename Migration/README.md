@@ -746,3 +746,57 @@ Checkpointが指すのは現在の実行操作である。共通検証を追加�
 Checkpoint試験39 PASS（今回追加16件、うち3件は修正前FAIL→修正後PASS）、Workflow Unit80 PASS、CMRP／Factory／SQLite／再開関連181 PASS、配布・独立実行・型利用6 PASS、Migration管理30 PASS、ルート全回帰541 PASS。Migration資産検証は8グループ174 PASS、既存35/35 VERIFIED、警告0、未登録0、COMPLETE承認0。Build・型検査・JS構文検査・git diff --checkもPASS。最終FAIL／SKIPは0。修正前・途中のFAILは上記historyへ残し、最終結果と混同しない。試験間の重複は単純合算しない。
 
 保留5文書と既存配布14版のtgz・記録28ファイルのSHA不変を確認した。HEADはb4be36be2cd908836bd76652a9718ee067d25488、main、Stage空。既存Stage 2-2Aの13ファイルは保全し、追加ファイルは整合性修正前証跡1件。SQLite Schema・保存Transaction・Workflow実行制御・旧CJob・Snapshot契約・Eventは変更せず、Stage 2-2Bには着手していない。Commit／Pushは未実施。
+
+## Stage 2-2B：SQLite Checkpoint復元・再開（2026-11-15）
+
+開始時はmain／3d2fd266d4f3e8e6c589acd1cde7e19a8a7782d9、Stage空、保留5文書のみが未コミットであった。保留文書と配布15版のtgz・記録30ファイルのSHAを記録し、今回の対象外として維持する。
+
+正式Builderの`restoreWorkflowCheckpoint()`とCWorkflowの`resumeCheckpoint()`を追加した。DefinitionのID／Version／既存Digest、全箱宣言を照合し、未結合ArtifactManagerを復元する。既存WaitingHistoryStoreのclaimWaiting／明示的claimLimitから同じSQLite Transactionで再検証・所有権取得を行い、成功応答後だけCWorkflow内部でrunIdを結合する。既存実行ループ、CMRP6工程、SQL Schema、Checkpoint／Artifact Snapshot形式を維持する。正式契約と制約はWorkflow READMEのStage 2-2B節を参照する。
+
+RUNNING／FAILEDの自動再開、COMPLETEDの実行再開、期限切れACTIVE leaseの自動takeoverは行わない。FINISHED操作の再送だけは読取専用receiptを返し、Jobを二重実行しない。claim結果不明、外部副作用後の保存結果不明も既存UNKNOWNガードを維持する。外部業務DBとCheckpointの原子性は保証しない。
+
+更新前Registry／latest／statusの原文とSHAを`reports/history/artifact-resume-before-stage22b.json`へ保存した。既存35資産と完了承認0を維持し、新規ローカル契約試験をNEWとして追加する。新グループartifact-resumeは33件の同一プロセス試験だけを実行する。実際の別プロセス試験7件とfixtureも入力指紋に含めるが、実行結果は別証跡として管理する。verifierのネットワーク・子プロセス禁止ガードやPASS条件は緩和しない。別プロセス試験をguard内で実行したとは扱わない。
+
+### 次回のローカル検証手順
+
+```sh
+npm run build
+npm run build --prefix Frwk_Units/Workflow
+node --test tests/workflow-artifact-resume.test.cjs
+node --test tests/workflow-artifact-resume-process.test.cjs
+node --test tests/workflow-artifact-checkpoint.test.cjs
+npm test --prefix Frwk_Units/Workflow
+node --test tests/workflow-unit-package.test.cjs
+npm test --prefix Migration
+npm run migration:verify --prefix Migration
+npm run migration:status --prefix Migration
+npm run migration:report --prefix Migration
+```
+
+プロセス試験は一時SQLiteと合成データに限定する。Migration資産検証にはBuild出力が必要であり、古いdistを使わない。既存35資産の検証に兄弟リポジトリへの読取が必要な点も維持する。root回帰とMigration管理の一部はローカルHTTP／一時junctionのOS権限を必要とする。実サービス接続は不要である。
+
+配布試験で生成したframework.11を上書きせず、claim応答待機中のManager変更検出を含む最終候補はframework.12とする。過去アーカイブは削除しない。Stage・Commit・PushおよびCOMPLETE承認は行わない。
+
+次工程Stage 2-2Cでは包括的障害注入・保存結果UNKNOWNの調査を行う候補があるが、今回は先行実装しない。今回の最小障害試験を包括保証とみなさず、RUNNING／結果不明状態の調査・回復手順、外部副作用の運用上の冪等性は引継ぎ課題とする。
+
+### Stage 2-2B 最終検証結果
+
+今回の実行結果は、新規同一プロセス33 PASS・実別プロセス7 PASS、既存Checkpoint39 PASS、Workflow Unit80 PASS、配布・独立実行／型利用6 PASS、Migration管理30 PASS、ルート全回帰541 PASS。関連回帰はLease・UNKNOWN・並行制御まで対象を広げ319 PASSとした。前回181件の試験名が今回の319件にすべて含まれることを照合し、既存試験の削除・期待値変更による件数増減ではないことを確認した。試験間の重複は単純合算しない。
+
+Migration資産検証は既存8グループ174件＋新33件の9グループ207 PASS、既存35資産を含む36/36 VERIFIED、警告0、未登録0、COMPLETE承認0。Root／Unit Build、両TypeScript noEmit型検査、変更JS構文検査、git diff --checkもPASS。最終FAIL／SKIPは0。途中の新規fixtureの参照パス・ガード試験構成のFAILは更新前証跡に記載し、最終PASSへ書き換えない。実プロセス試験結果と検証ログのSHAは`reports/history/artifact-resume-stage22b-validation.json`に別記する。
+
+## Stage 2-2B：Job実行前所有権検証の修正（2026-11-15）
+
+上記最終確認後のレビューで、beforeStep中のlease失効後も後続Jobが実行される欠陥を発見したため、Commit／Pushを停止した。過去36/36 VERIFIEDやPASS件数は当時の検証範囲の結果として保持し、この実行境界の保証とは区別する。
+
+CWorkflowへ保存先非依存のassertCanExecuteStep Portを接続した。Hook前後、訪問時Factoryの前と生成後のJob／Check直前で、既存SQLiteの現在owner／lease／Revision／操作ID／Workflow状態・位置を検証する。SQLite時刻を利用し、ローカル時計だけで許可しない。検証失敗時にJobを呼ばず、Checkpointを書き換えない。既知の実行拒否とDB障害等の検証結果UNKNOWNを区別する。CMRP6工程、claim／Revision、SnapshotとSQL Schema、旧再開契約は維持する。
+
+更新前18ファイルのSHAとRegistry／latest／status原文、修正前FAILのログは`reports/history/execution-ownership-before-fix.json`へ保存した。過去の証跡を改変しない。既存36資産を維持し、新規専用試験をNEWで追加、execution-ownershipグループにローカル19試験を登録する。既存実プロセス試験は7件から8件へ増えるが、Migrationのguard内では実行せず従来どおり別記録とする。ネットワーク・子プロセスガードの緩和やCOMPLETE承認は行わない。
+
+配布候補は既存framework.12を上書きせずframework.13とする。検証直後から外部副作用までの原子性は保証せず、外部fencing／冪等性と包括的障害評価はStage 2-2Cの引継ぎ事項とする。今回Stage 2-2Cは実装せず、Stage・Commit・Pushもしない。
+
+### 所有権検証修正の最終結果
+
+専用19 PASS、復元・claim33 PASS、実別プロセス8 PASS（既存7＋lease失効1）、SQLite Checkpoint39 PASS、Workflow Unit80 PASS、関連回帰319 PASS、配布・独立実行／型利用6 PASS、ルート541 PASS、Migration管理30 PASS。Migration資産検証は既存207＋新19の226 PASS、既存36資産を含む37/37 VERIFIED、警告0、未登録0、COMPLETE承認0。Build、両TypeScript型検査、変更JS構文、差分検査もPASS。試験の重複は合算しない。
+
+元の再現ケースは修正前1 FAIL、修正後PASSとして確認した。追加試験の途中では、Factoryが既存契約上未対応のCDummyJobを返すfixtureにより16 PASS／1 FAILとなった。fixtureを正式CJobFormへ修正し、ガードや既存期待値は弱めていない。途中結果と最終結果は`reports/history/execution-ownership-fix-validation.json`へ区別して保存する。最終FAIL／SKIPは0。

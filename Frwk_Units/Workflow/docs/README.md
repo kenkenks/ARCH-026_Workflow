@@ -424,3 +424,65 @@ Snapshotは既存のDTO検証に通し、既存isDeepStrictEqualで比較する�
 回帰試験は修正前に既存23 PASS・新規3 FAILを記録し、修正後は3件すべてPASS。追加検証途中ではエラー分類差で38 PASS・1 FAILとなり、分類を修正した。これらのログと更新前証跡はMigrationのhistoryへ保全する。追加16試験を含むCheckpoint試験39件で、欠落・重複操作、不明Version、Snapshot欠落/不正、プロパティ順、RUNNING中間状態、DB非変更、Store/Workflow経由の再開拒否も検証する。
 
 保存Transaction、Revision更新、lease解放、UNKNOWNガード、SQLite Schema、CMRP、Artifact Snapshot Schema、Manager公開APIは変更していない。保全済みframework.9を上書きしないため、配布候補はframework.10とする。Stage 2-2Bは未実装のままである。
+
+## Stage 2-2B：SQLite Checkpointの復元・明示的再開（2026-11-15）
+
+本節が現在の実装状態である。上記Stage 1／2-1／2-2Aの「復元・新Checkpoint再開は未実装／拒否」は当時の履歴として保持する。旧APIによる新Checkpointの暗黙再開は引き続き拒否し、以下の専用入口だけを接続した。
+
+### 正式入口と責務
+
+- `restoreWorkflowCheckpoint(definition, registry, store)`：正式Unit／Prototype互換入口から公開する非同期Builder関数。`prototype-workflow/3`を検証し、StoreからCheckpointを取得してDefinitionを照合した後、既存`ArtifactManager.fromSnapshot(snapshot, definition.artifactBoxes)`と`reconstructWorkflow()`を呼ぶ。戻り値は既存の構築結果（definition／workflow／startStepNo／artifacts）に`checkpoint`を加えたもの。claimやJob実行はしない。
+- `CWorkflow.resumeCheckpoint(checkpoint, request, maxExecutions=100, beforeStep?)`：既存実行ループへ接続する。WAITING／LIMIT_REACHEDの実行位置と構築済み工程の整合性を確認し、Storeでclaimが成功した場合だけManagerをrunIdへ結合して継続する。CMRP6工程・Factory・Check評価・履歴の訪問番号・公開済み成果物の保存境界は維持する。
+- `IArtifactCheckpointStore`：既存History Portを拡張し、`readCheckpoint()`、`validateCheckpointDefinition(checkpoint, definition)`、`claimCheckpoint(checkpoint, definition, artifacts, request)`を定義する。`ArtifactWorkflowCheckpoint`と`CheckpointResumeRequest`も型公開する。Definition解釈とDigest照合はBuilder／Store側に置き、CWorkflowは具体的なSQLiteやDefinition解析に依存しない。
+- `WaitingHistoryStore`：既存SQLite BackendのTransaction、Revision／lease／operation履歴を再利用する。SQLテーブル、DDL、user_version、Checkpoint／Artifact Snapshot形式は変更しない。別のRunnerやCheckpoint Storeは追加しない。
+
+要求はWAITINGなら`{kind:'WAITING', operation:{runId, operationId, expectedWaitGeneration, expectedRevision, result}}`、LIMIT_REACHEDなら`{kind:'LIMIT_REACHED', operationId, expectedRevision}`とする。LIMITにも明示的なIDとRevisionが必須で、既存`claimLimit()`を経由する。WAITINGは既存`claimWaiting()`を経由する。これらの旧APIを単独で呼んで新Checkpointのガードを解除することはできない。
+
+### Definition・Snapshot照合
+
+Definition ID／Version／Digestの全一致を必須とする。Digestは既存Firestore composition/storeと同じ「`validatePrototypeDefinition()`後の`JSON.stringify()`をSHA-256」の契約を利用する。SQLite側の`definitionDigest(input)`も同じ計算を公開する。新しい正規化方式や照合省略オプションは導入しない。登録時に別方式で作ったDigestは、今回の厳密照合では利用できない。
+
+保存箱集合はDefinitionの宣言＋defaultと完全一致させる。未宣言箱・欠落・重複・不明Codec／形式は拒否する。既存Validatorと復元Factoryにより空箱・明示undefined・参照独立性を維持する。取得したDefinitionやCheckpointで宣言を上書きしない。
+
+### claim・runId結合
+
+1. 読み込み、整合性／Definition／全箱検証、未結合Manager復元、既存Builderによる構築。
+2. 新規claim時はSQLite Transaction内で現在rowを再読込し、Revision、Checkpoint全体（Snapshot・成果物・操作ID・ownerを含む）、Definition、要求世代、状態、lease RELEASEDを照合する。Revision一致だけでは許可しない。
+3. 新しいowner/token/fence、RUNNING操作、Revision、SnapshotとCheckpointの識別情報を同じTransactionで更新する。WAITINGでは確定操作結果をinputへ保存し、保存済みnextStepへ進む。LIMITでは保存済みcurrentStepを継続する。
+4. 成功応答後、claim待機中にManagerが変更されていないことも確認し、CWorkflow内部だけからrunIdを結合する。復元Managerの通常`bindRun()`は`ARTIFACT_CLAIM_REQUIRED`で拒否する。内部結合関数は正式ルートexportに含めない。
+
+Workflow／Storeは信頼するアプリケーション構成要素であり、任意コードの改変・偽造Storeに対するセキュリティsandboxではない。公開契約上のclaim省略・任意runId結合経路は提供しない。
+
+### 状態・冪等性・障害
+
+WAITING／LIMIT_REACHEDだけが新規実行claimの候補である。RUNNING／FAILEDを自動再実行せず、COMPLETEDも実行再開しない。ACTIVE leaseは期限切れでもこの経路では自動takeoverしない。旧Checkpointの再開契約は変更しない。
+
+同一操作IDのFINISHED receiptは永続化済みSnapshotを読み取り専用で返し、claim・Manager結合・Job再実行を行わない。異なる要求内容は`OPERATION_CONFLICT`、未確定操作は`OPERATION_IN_PROGRESS`。これは完了済みWorkflowの実行再開を意味しない。既存履歴は消去しない。
+
+破損は`DATA_CORRUPT`、Definition不一致は`DEFINITION_CONFLICT`、Revision変更は`REVISION_CONFLICT`、owner競合は`CLAIM_BUSY`、読込後のCheckpoint／成果物変化は`RESUME_STATE_CHANGED`で停止する。追加の入口識別には`CHECKPOINT_NOT_FOUND`／`CHECKPOINT_NOT_RESUMABLE`／`ARTIFACT_CLAIM_REQUIRED`を利用する。claim結果不明は既存`OUTCOME_UNKNOWN`、Job後の保存結果不明は`HISTORY_SAVE_OUTCOME_UNKNOWN`を維持する。自動修復・Memoryフォールバック・不明状態からの自動再試行は行わない。
+
+claim直後の終了ではRUNNINGと操作RUNNINGが残り、手動調査が必要となる。外部副作用とCheckpoint保存の原子性は保証しない。副作用後に保存失敗しても副作用をRollback済みと扱わず、同じ操作で再実行しない。
+
+### ローカル検証と配布
+
+`node --test tests/workflow-artifact-resume.test.cjs`は一時SQLiteを使う同一プロセス契約試験。`node --test tests/workflow-artifact-resume-process.test.cjs`は実際のforkプロセス間で保存／終了／復元／競合／claim後終了／応答喪失／副作用後保存失敗を検証する。fixtureは合成データのみで実サービスを利用しない。
+
+Migrationのguarded検証は前者だけを実行し、後者と子プロセスfixtureは入力指紋に含める。子プロセス禁止・ネットワーク禁止ガードは緩和しない。実プロセス試験の実行結果は別証跡とし、guard内で実行したように扱わない。
+
+配布生成器の互換パッケージにも復元Builderを公開する。既存30配布ファイルと途中生成候補framework.11を上書きせず、最終候補は`0.3.0-framework.12`とする。SQLite Backend自体の独立配布は従来どおり対象外。Firestore、包括的障害注入、外部DB Transaction統合はStage 2-2Bに含まない。
+
+### Stage 2-2B：実行直前の所有権検証修正（2026-11-15）
+
+最終レビューで、claim成功後の`beforeStep()`待機中にleaseが失効すると、後続Jobが実行されてから保存時にLEASE_EXPIREDとなる欠陥を再現した。前節までの試験結果は修正前の記録であり、Job実行前のstale Host拒否を保証していたとは扱わない。旧stale Host試験は保存拒否のみを確認していた。
+
+History Portへ任意の`assertCanExecuteStep(snapshot: RunSnapshot): void | Promise<void>`と`requiresExecutionOwnership`宣言を追加した。SQLiteのWaitingHistoryStoreは必須宣言を持ち、復元用`IArtifactCheckpointStore`では検証メソッドを必須とする。未接続・実行途中の切断は拒否する。Memory専用History Storeや未対応の旧AdapterへSQLite依存を追加せず、新しいRunnerは設けない。
+
+既存ループ内で、任意`beforeStep`の直前、同Hook終了後の訪問時Factory呼出し直前、Factory生成後のJob／Check評価直前に検証する。Hookは従来の実行前処理のままとし、所有権検証の代用にしない。BuilderでのJob／Check構築タイミングは変更しない。構築用Factoryに業務副作用を持たせる契約は導入せず、実行時の処理を上記境界で保護する。
+
+WaitingHistoryStoreはclaim時に操作IDをHost内へ記録する。`assertCanExecuteStep()`はSQLite Backendの`inspect()`でTransaction内の現在rowとSQLite由来の時刻を読み、runId、owner ID／token／fence／ACTIVE、lease期限、Host保持Revision、claim時操作IDと現在操作ID、操作RUNNING、Workflow RUNNING、実行位置・履歴等のSnapshot一致を確認する。保存・lease更新・Revision更新・claim・owner変更を行わない。inspectは既存SimpleDB Transactionを使う読取処理で、SQL Schema／DDLは変更しない。
+
+検証エラーは正式公開の`WorkflowExecutionOwnershipError`で通知する。原因がLEASE_EXPIRED／FENCED／REVISION_CONFLICT／OPERATION_CONFLICT等なら`EXECUTION_OWNERSHIP_REFUSED`・outcome REFUSED、DB接続障害・検証結果不明・PERSISTENCE_UNCERTAIN等なら`EXECUTION_OWNERSHIP_UNKNOWN`・outcome UNKNOWNとする。元の原因コードはcauseに保持する。Portの初期未接続は`EXECUTION_OWNERSHIP_REQUIRED`。不正状態ではJob／Check／後続Hookを呼ばず、失効した資格でFAILED保存を試みない。自動再試行・Memoryへの切替・無断再claim・runId再結合も行わない。既存の保存結果UNKNOWN契約は変更しない。
+
+**実行直前検証は検証時点の所有権を確認するだけであり、外部副作用を原子的に保護しない。** 検証後やJob実行中にlease失効・所有権変更が起こる余地は残る。外部システム側の冪等性・fencing token・Transaction連携が必要であり、包括的な障害評価はStage 2-2Cへ残す。今回それらを実装したとは扱わない。
+
+専用試験は`node --test tests/workflow-execution-ownership.test.cjs`。元の再現ケースを修正前FAILとして残し、修正後は実行件数0・SQLiteのLEASE_EXPIRED・Checkpoint非進行を確認する。実際の新Host claim後の旧Host実行／保存拒否、Revision／操作変更、Check／Hook／Factory境界、DB障害とUNKNOWN、Memory互換性も確認する。既存別プロセス試験にはlease失効時の実行件数0を追加した。保全済み候補を上書きせず、修正版の配布候補は`0.3.0-framework.13`とする。

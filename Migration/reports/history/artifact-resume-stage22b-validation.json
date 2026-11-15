@@ -1,0 +1,469 @@
+{
+  "purpose": "Stage 2-2B final local verification; independent child-process execution is separate from guarded Migration verification",
+  "recordedAt": "2026-11-15T08:28:53.7735674+09:00",
+  "head": "3d2fd266d4f3e8e6c589acd1cde7e19a8a7782d9",
+  "commands": [
+    "npm run build",
+    "npm run build --prefix Frwk_Units/Workflow",
+    "node node_modules/typescript/bin/tsc -p tsconfig.prototype.json --noEmit",
+    "node node_modules/typescript/bin/tsc -p Frwk_Units/Workflow/tsconfig.json --noEmit",
+    "node --test tests/workflow-artifact-checkpoint.test.cjs tests/workflow-artifact-resume.test.cjs tests/workflow-artifact-resume-process.test.cjs",
+    "node --test Frwk_Units/Workflow/tests/workflow.test.cjs",
+    "node --test --test-concurrency=1 tests/workflow-definition.test.cjs tests/job-form-cmrp.test.cjs tests/job-form-execution.test.cjs tests/job-form-loop.test.cjs tests/job-form-check-branch.test.cjs tests/job-form-post-failure.test.cjs tests/job-form-sqlite.test.cjs tests/job-execution-sqlite.test.cjs tests/job-run-diagnosis.test.cjs tests/job-run-resume.test.cjs tests/job-run-lease.test.cjs tests/workflow-waiting.test.cjs tests/sqlite-diagnostic-retry.test.cjs tests/history-unknown.test.cjs tests/workflow-concurrency.test.cjs",
+    "node --test tests/workflow-unit-package.test.cjs",
+    "npm test --prefix Migration",
+    "npm run migration:verify --prefix Migration",
+    "npm test",
+    "node --check <8 changed JavaScript files>",
+    "git diff --check"
+  ],
+  "counts": {
+    "checkpoint": 39,
+    "resumeInProcess": 33,
+    "resumeRealProcess": 7,
+    "workflowUnit": 80,
+    "related": 319,
+    "previousRelatedIncluded": 181,
+    "package": 6,
+    "migrationManagement": 30,
+    "migrationAssets": 207,
+    "root": 541,
+    "finalFail": 0,
+    "finalSkip": 0
+  },
+  "migration": {
+    "registered": 36,
+    "verified": 36,
+    "completeApprovals": 0,
+    "warnings": 0,
+    "groups": [
+      {
+        "id": "db",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 7,
+          "pass": 7,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "a2137edc93da1ddc0bef720ff9eb1ed856c9e2b19e3eb7cefe227d528950ba52"
+      },
+      {
+        "id": "core",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 3,
+          "pass": 3,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "28ee416c574d742220a5857e6c82e13ef0bb5f80f0bc5729ea5fa56dcdfc1712"
+      },
+      {
+        "id": "member",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 3,
+          "pass": 3,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "51d0ce6052b2f24eb0be02025a5a88a1ebf9105844c5251c3b5acdcfa4f9deda"
+      },
+      {
+        "id": "time",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 17,
+          "pass": 17,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "bc0e175d3c065b145250c11530edad47163ff63a666f847f66d444e6f610d048"
+      },
+      {
+        "id": "workflow",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 80,
+          "pass": 80,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "ef9271d5e5b331f5890e96167a077249468ad266c0808e43a852b482232ebcce"
+      },
+      {
+        "id": "public-api",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 8,
+          "pass": 8,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "95d00ea92cfc197d7ea6f2661e23b4908845461e89cfaaba9c4e29cb637ab9d8"
+      },
+      {
+        "id": "member-schema",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 17,
+          "pass": 17,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "a8cb3bb57cac1cd77958bebe124e87c66d2d5d2ca2e97c17006c9931fd6b73f2"
+      },
+      {
+        "id": "artifact-checkpoint",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 39,
+          "pass": 39,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "2c4362917e96ac77ccf763447b1a5e2bd1331785dfcbf25828d54bf7edf3d92c"
+      },
+      {
+        "id": "artifact-resume",
+        "outcome": "PASS",
+        "counts": {
+          "tests": 33,
+          "pass": 33,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "89aaa5d0ef5328de5aee0d64f03721cdff2a9e404a326b0eb68006bfa939a222"
+      }
+    ]
+  },
+  "package": {
+    "version": "0.3.0-framework.12",
+    "filename": "arch026-workflow-unit-0.3.0-framework.12.tgz",
+    "sha256": "4daf2b169967c329bc5b6504134a473ce4dbd004c3cd00ef49457dc9622a220d"
+  },
+  "logs": {
+    "logs/resume22-final-build.log": {
+      "sha256": "1af6cf5116f093fdae2bc7ec941be2c6067ff7b007b121a0bc0220a9b22d21cb",
+      "summary": [
+        "> arch-026-workflow-prototype@0.1.0 build\r",
+        "> @arch026/workflow@0.1.1 build\r",
+        "> node tools/build.cjs\r"
+      ]
+    },
+    "logs/resume22-final-new.log": {
+      "sha256": "4a995d9cf2ac6efd65f2bd54fe31da8c03e876e38f38d482cdda0f2d5686ee65",
+      "summary": [
+        "✔ invalid artifact snapshots fail before beginning a write transaction (30.4095ms)\r",
+        "ℹ tests 79\r",
+        "ℹ pass 79\r",
+        "ℹ fail 0\r",
+        "ℹ skipped 0\r"
+      ]
+    },
+    "logs/resume22-final-unit.log": {
+      "sha256": "49bb14d07e534a40b57d0e65edfc64cee2471f3630e4b1325ce55741f08a56a9",
+      "summary": [
+        "✔ public Builder constructs fixed Jobs and Checks once, defers visit Jobs and never executes work (6.7256ms)\r",
+        "✔ public Builder rejects missing or ambiguous registrations before any factory runs (0.8137ms)\r",
+        "✔ rebuilding a LIMIT boundary continues history and visit numbering without redoing prior Jobs (0.8046ms)\r",
+        "✔ public Builder preserves WAIT boundary and resumes with newly constructed Check state (0.8542ms)\r",
+        "✔ parallel Builder results isolate visit counters, products and saved histories (1.2583ms)\r",
+        "✔ Snapshot factory returns an unbound manager and does not bypass Stage 1 resume protection (0.1382ms)\r",
+        "✔ executed build matches current Unit source and build configuration (13.0764ms)\r",
+        "ℹ tests 80\r",
+        "ℹ pass 80\r",
+        "ℹ fail 0\r",
+        "ℹ skipped 0\r"
+      ]
+    },
+    "logs/resume22-final-related.log": {
+      "sha256": "af4dc75e8ffc7a0aef614e5d0aa941766569d3d855eec91469a7124ac8bca010",
+      "summary": [
+        "✔ E: independent loop state and fresh Check instances, one-three-fail (1.2689ms)\r",
+        "✔ valid random claimToken cannot bypass a stale fencing generation (138.3092ms)\r",
+        "✔ takeover cannot pass a fenced transaction even when lease expires while it holds the lock (1919.2304ms)\r",
+        "✔ Prototype compatibility entry re-exports the canonical Unit Builder and contracts (2.0358ms)\r",
+        "✔ formal package and Prototype Builders preserve equivalent factory timing, topology and history (27.6137ms)\r",
+        "ℹ tests 319\r",
+        "ℹ pass 319\r",
+        "ℹ fail 0\r",
+        "ℹ skipped 0\r"
+      ]
+    },
+    "logs/resume22-final-package.log": {
+      "sha256": "0ce5e3e853f3c793ca81aa0afff0ba78cbc67035d9aa34b1888982c00ae529bd",
+      "summary": [
+        "✔ same sources rebuild the same immutable package SHA-256 (8301.1022ms)\r",
+        "✔ package compiled modules exist in a clean build without obsolete Prototype Port declarations (5095.0011ms)\r",
+        "✔ packaged compatibility Builder includes canonical modules and runs without checkout source (4410.8016ms)\r",
+        "ℹ tests 6\r",
+        "ℹ pass 6\r",
+        "ℹ fail 0\r",
+        "ℹ skipped 0\r"
+      ]
+    },
+    "logs/resume22-final-management.log": {
+      "sha256": "baaae4be973459d8632e439506f37c2500050c8baacec18633164663811eeb5c",
+      "summary": [
+        "✔ zero tests and skipped tests cannot be verified (31.4342ms)\r",
+        "ℹ tests 30\r",
+        "ℹ pass 30\r",
+        "ℹ fail 0\r",
+        "ℹ skipped 0\r"
+      ]
+    },
+    "logs/resume22-final-assets.log": {
+      "sha256": "4d780358b5f0cdef1fcf59a47af85626502ab8d66b0dcadcabb239cd5cfa47c7",
+      "summary": [
+        "# Subtest: Portable Definition builder generates arbitrary entity artifacts\r",
+        "ok 1 - Portable Definition builder generates arbitrary entity artifacts\r",
+        "# tests 7\r",
+        "# pass 7\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# tests 3\r",
+        "# pass 3\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# tests 3\r",
+        "# pass 3\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# tests 17\r",
+        "# pass 17\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# Subtest: public Builder constructs fixed Jobs and Checks once, defers visit Jobs and never executes work\r",
+        "ok 1 - public Builder constructs fixed Jobs and Checks once, defers visit Jobs and never executes work\r",
+        "# Subtest: public Builder rejects missing or ambiguous registrations before any factory runs\r",
+        "ok 2 - public Builder rejects missing or ambiguous registrations before any factory runs\r",
+        "# Subtest: rebuilding a LIMIT boundary continues history and visit numbering without redoing prior Jobs\r",
+        "ok 4 - rebuilding a LIMIT boundary continues history and visit numbering without redoing prior Jobs\r",
+        "# Subtest: public Builder preserves WAIT boundary and resumes with newly constructed Check state\r",
+        "ok 5 - public Builder preserves WAIT boundary and resumes with newly constructed Check state\r",
+        "# Subtest: parallel Builder results isolate visit counters, products and saved histories\r",
+        "ok 6 - parallel Builder results isolate visit counters, products and saved histories\r",
+        "# Subtest: Snapshot factory returns an unbound manager and does not bypass Stage 1 resume protection\r",
+        "ok 48 - Snapshot factory returns an unbound manager and does not bypass Stage 1 resume protection\r",
+        "# Subtest: executed build matches current Unit source and build configuration\r",
+        "ok 61 - executed build matches current Unit source and build configuration\r",
+        "# tests 80\r",
+        "# pass 80\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# Subtest: DB Builder public ESM/CJS entries and legacy file path resolve to the same implementation\r",
+        "ok 6 - DB Builder public ESM/CJS entries and legacy file path resolve to the same implementation\r",
+        "# tests 8\r",
+        "# pass 8\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# tests 17\r",
+        "# pass 17\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# Subtest: invalid artifact snapshots fail before beginning a write transaction\r",
+        "ok 6 - invalid artifact snapshots fail before beginning a write transaction\r",
+        "# tests 39\r",
+        "# pass 39\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "# tests 33\r",
+        "# pass 33\r",
+        "# fail 0\r",
+        "# skipped 0\r",
+        "      \"id\": \"db-builder\",\r",
+        "      \"id\": \"workflow-new-tools-build-cjs\",\r",
+        "      \"id\": \"workflow-WorkflowBuilder\",\r",
+        "      \"id\": \"workflow-new-tests-builder-test-cjs\",\r"
+      ]
+    },
+    "logs/resume22-final-root.log": {
+      "sha256": "2c5787ce2a8df0ae99c4d4abb7aa1b55bc8d921f2f8f2d83378240f16b8d8429",
+      "summary": [
+        "> npm run build && node --test dist/tests/prototype.test.js tests/definitions.test.cjs tests/job-catalog.test.cjs tests/template-runner.test.cjs tests/exam-job-classes.test.cjs tests/exam-jobs.test.cjs tests/hello/hello.test.cjs tests/hello-client.test.cjs tests/hello-host.test.cjs tests/workflow-definition.test.cjs tests/simpledb.test.cjs tests/definition-migration.test.cjs tests/data-migration.test.cjs tests/schema-migration.test.cjs tests/schema-migration-generic.test.cjs tests/gui-definition-safety.test.cjs tests/workflow-runtime.test.cjs tests/gui-execution-mode.test.cjs tests/workflow-concurrency.test.cjs tests/gui-runtime-concurrency.test.cjs tests/workflow-exceptions.test.cjs tests/gui-exceptions.test.cjs tests/ticket-completion.test.cjs tests/gui-ticket-completion.test.cjs tests/reference-independence.test.cjs tests/gui-http-input.test.cjs tests/ticket-job-validation.test.cjs tests/gui-definition-transitions.test.cjs tests/core-input-validation.test.cjs tests/job-form-cmrp.test.cjs dist/tests/ticket.test.js\r",
+        "> arch-026-workflow-prototype@0.1.0 build\r",
+        "✔ duplicate and malformed manifest fail before Repository access (1.7842ms)\r",
+        "✔ DEMO never calls Ticket attach even when its saving path would fail (55.094ms)\r",
+        "✔ a start body accepted before uncertainty cannot bypass the hold when it arrives late (66.738ms)\r",
+        "✔ independent malformed payload, physical schema and version fail closed (135.8382ms)\r",
+        "✔ Prototype compatibility entry re-exports the canonical Unit Builder and contracts (4.5449ms)\r",
+        "✔ formal package and Prototype Builders preserve equivalent factory timing, topology and history (76.9417ms)\r",
+        "ℹ tests 541\r",
+        "ℹ pass 541\r",
+        "ℹ fail 0\r",
+        "ℹ skipped 0\r"
+      ]
+    }
+  },
+  "limitations": [
+    "Test sets overlap and are not summed.",
+    "The guarded Migration group executes 33 in-process tests. Seven real child-process tests were executed separately, with temporary SQLite only.",
+    "No real service, DB migration, Stage 2-2C implementation or external-side-effect atomicity guarantee.",
+    "Initial fixture failures are preserved in artifact-resume-before-stage22b.json."
+  ],
+  "gitOperations": "No stage, commit or push",
+  "preservation": {
+    "docs/plans/PHASE-5B-minimal-contract-design.md": {
+      "before": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "after": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264"
+    },
+    "docs/architecture/ARCH-026_CMRP_設計対話整理_2026-11-07.md": {
+      "before": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "after": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff"
+    },
+    "docs/architecture/ARCH-026_Migration_Function_Inventory_20261106.md": {
+      "before": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "after": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd"
+    },
+    "docs/architecture/ARCH-026_Workflow_Function_Check_20261106.md": {
+      "before": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "after": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03"
+    },
+    "docs/architecture/ARCH-026_設計判断履歴_CJobFormとCJobの未定義_2026-11-08.md": {
+      "before": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "after": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz": {
+      "before": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "after": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz.json": {
+      "before": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "after": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz": {
+      "before": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "after": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz.json": {
+      "before": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "after": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz": {
+      "before": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "after": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz.json": {
+      "before": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "after": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz": {
+      "before": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "after": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz.json": {
+      "before": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "after": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz": {
+      "before": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "after": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz.json": {
+      "before": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "after": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz": {
+      "before": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "after": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz.json": {
+      "before": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "after": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz": {
+      "before": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "after": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz.json": {
+      "before": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "after": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz": {
+      "before": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "after": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz.json": {
+      "before": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "after": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz": {
+      "before": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "after": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz.json": {
+      "before": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "after": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz": {
+      "before": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "after": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz.json": {
+      "before": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "after": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz": {
+      "before": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "after": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz.json": {
+      "before": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "after": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz": {
+      "before": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "after": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz.json": {
+      "before": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "after": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz": {
+      "before": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "after": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz.json": {
+      "before": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "after": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz": {
+      "before": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "after": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz.json": {
+      "before": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "after": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz": {
+      "before": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "after": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz.json": {
+      "before": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "after": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a"
+    }
+  },
+  "changedFiles": [
+    "Frwk_Units/Workflow/docs/README.md",
+    "Frwk_Units/Workflow/src/ArtifactManager.ts",
+    "Frwk_Units/Workflow/src/CWorkflow.ts",
+    "Frwk_Units/Workflow/src/WorkflowBuilder.ts",
+    "Migration/README.md",
+    "Migration/registry.json",
+    "Migration/reports/history/artifact-resume-before-stage22b.json",
+    "Migration/reports/history/artifact-resume-stage22b-validation.json",
+    "Migration/reports/latest.json",
+    "Migration/reports/status.md",
+    "Migration/src/verifier.mjs",
+    "src/adapters/workflow-waiting/lifecycle.cjs",
+    "tests/workflow-artifact-resume-process.test.cjs",
+    "tests/workflow-artifact-resume.test.cjs",
+    "tests/workflow-artifact-resume/child.cjs",
+    "tests/workflow-artifact-resume/scenario.cjs",
+    "tests/workflow-unit-package.test.cjs",
+    "tools/package-workflow-unit.cjs"
+  ]
+}

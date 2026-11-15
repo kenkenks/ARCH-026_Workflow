@@ -1,6 +1,6 @@
 import {CJobForm,createExecutionContext,getExecutionState,getRecorded,executeLegacyForm} from './CJobForm';
 import type {JobFormDefinition,ProductShelf,ExecutionContext} from './CJobForm';
-import {ArtifactManager} from './ArtifactManager';
+import {ArtifactManager,bindClaimedArtifacts,checkArtifactClaimTarget} from './ArtifactManager';
 import type {ArtifactSnapshot} from './ArtifactSnapshot';
 /** Framework Workflow execution implementation. Legacy imports re-export this module. */
 export class WorkflowValidationError extends Error {
@@ -118,9 +118,35 @@ export class WorkflowRunError extends Error {
     this.name='WorkflowRunError';this.code=code;this.outcome=code==='BEFORE_STEP_FAILED'?'FAILED':'UNKNOWN';
   }
 }
+/** A refused ownership check proves execution is disallowed; an unavailable check proves neither ownership nor loss. */
+export class WorkflowExecutionOwnershipError extends Error {
+  readonly code:'EXECUTION_OWNERSHIP_REFUSED'|'EXECUTION_OWNERSHIP_UNKNOWN';
+  readonly outcome:'REFUSED'|'UNKNOWN';
+  constructor(cause:unknown){
+    const known=new Set(['FENCED','LEASE_EXPIRED','REVISION_CONFLICT','RUN_MISMATCH','OPERATION_CONFLICT','RESUME_STATE_CHANGED','CHECKPOINT_NOT_RESUMABLE','DATA_CORRUPT','EXECUTION_OWNERSHIP_REQUIRED']);
+    const refused=!!cause&&typeof cause==='object'&&known.has((cause as {code:string}).code);
+    super(refused?'Execution ownership refused':'Execution ownership could not be verified',{cause});
+    this.name='WorkflowExecutionOwnershipError';this.code=refused?'EXECUTION_OWNERSHIP_REFUSED':'EXECUTION_OWNERSHIP_UNKNOWN';this.outcome=refused?'REFUSED':'UNKNOWN';
+  }
+}
 export interface IWorkflowHistoryStore { save(snapshot: RunSnapshot): void | Promise<void>; load(runId: string): RunSnapshot | undefined | Promise<RunSnapshot | undefined>;
+  readonly requiresExecutionOwnership?:boolean;
+  /** Observe authoritative state without refreshing ownership, Revision or lease. */
+  assertCanExecuteStep?(snapshot:RunSnapshot):void|Promise<void>;
   /** Optional atomic state + artifacts capability. Legacy/Memory stores need not implement it. */
   saveCheckpoint?(snapshot:RunSnapshot,artifacts:ArtifactSnapshot):void|Promise<void>;
+}
+export interface ArtifactWorkflowCheckpoint {
+  formatVersion:'workflow-checkpoint/1';runId:string;definition:{id:string;version:string;digest:string};
+  workflowSnapshot:RunSnapshot;artifactSnapshot:ArtifactSnapshot;revision:number;operationIdentifier:string;
+  owner:{state:'ACTIVE'|'RELEASED';ownerId:string;token:string;fence:number;expiresAt:number};
+}
+export type CheckpointResumeRequest={kind:'WAITING';operation:WaitingOperation}|{kind:'LIMIT_REACHED';operationId:string;expectedRevision:number};
+export interface IArtifactCheckpointStore extends IWorkflowHistoryStore {
+  assertCanExecuteStep(snapshot:RunSnapshot):void|Promise<void>;
+  readCheckpoint():ArtifactWorkflowCheckpoint|undefined|Promise<ArtifactWorkflowCheckpoint|undefined>;
+  validateCheckpointDefinition(checkpoint:ArtifactWorkflowCheckpoint,definition:unknown):void|Promise<void>;
+  claimCheckpoint(checkpoint:ArtifactWorkflowCheckpoint,definition:unknown,artifacts:ArtifactSnapshot,request:CheckpointResumeRequest):Promise<{replayed:boolean;snapshot:RunSnapshot}>;
 }
 /** The caller authorizes operations; this Port atomically owns CAS, receipt and Lease. */
 export interface IWaitingHistoryStore extends IWorkflowHistoryStore {
@@ -143,7 +169,7 @@ const activeRuns = new WeakMap<IWorkflowHistoryStore, Set<string>>();
 export class CWorkflow {
   private readonly steps = new Map<StepNo, WorkflowStep>();
   private running = false;
-  constructor(steps: readonly WorkflowStep[], private readonly store: IWorkflowHistoryStore, private readonly artifacts?:ArtifactManager) {
+  constructor(steps: readonly WorkflowStep[], private readonly store: IWorkflowHistoryStore, private readonly artifacts?:ArtifactManager,private readonly checkpointDefinition?:unknown) {
     if(artifacts!==undefined&&!(artifacts instanceof ArtifactManager))throw new WorkflowValidationError();
     if(!Array.isArray(steps)||!store||typeof store.save!=='function'||typeof store.load!=='function')throw new WorkflowValidationError();
     for (const step of steps) {
@@ -189,13 +215,28 @@ export class CWorkflow {
     if(!step||!('waitReason' in step)||step.nextStepNo!==saved.waiting.nextStepNo||step.waitReason!==saved.waiting.reason)throw new WorkflowValidationError();
     return this.executeRun(saved.runId,saved.waiting.nextStepNo,maxExecutions,beforeStep,copySnapshot(saved),operation);
   }
-  private async executeRun(runId:string,startStepNo:StepNo,maxExecutions:number,beforeStep?:()=>Promise<void>,seed?:RunSnapshot,operation?:WaitingOperation):Promise<RunSnapshot>{
+  /** Claims and continues an inspected Checkpoint. Receipt replay never executes Jobs or binds artifacts. */
+  async resumeCheckpoint(checkpoint:ArtifactWorkflowCheckpoint,request:CheckpointResumeRequest,maxExecutions=100,beforeStep?:()=>Promise<void>):Promise<RunSnapshot>{
+    requireObject(checkpoint);validateSnapshot(checkpoint.workflowSnapshot);
+    if(checkpoint.runId!==checkpoint.workflowSnapshot.runId)throw Object.assign(new Error('Run mismatch'),{code:'RUN_MISMATCH'});
+    if(!this.artifacts||!this.checkpointDefinition||typeof (this.store as IArtifactCheckpointStore).claimCheckpoint!=='function')throw Object.assign(new Error('Unsupported checkpoint resume'),{code:'ARTIFACT_RESTORE_UNSUPPORTED'});
+    if(typeof this.store.assertCanExecuteStep!=='function')throw Object.assign(new Error('Execution ownership Port required'),{code:'EXECUTION_OWNERSHIP_REQUIRED'});
+    const saved=structuredClone(checkpoint);
+    const boundary=saved.workflowSnapshot;
+    if(boundary.status==='WAITING'){
+      const step=this.steps.get(boundary.currentStepNo!);
+      if(!step||!('waitReason' in step)||step.nextStepNo!==boundary.waiting!.nextStepNo||step.waitReason!==boundary.waiting!.reason)throw new WorkflowValidationError();
+    }else if(boundary.status==='LIMIT_REACHED'&&(boundary.currentStepNo===null||boundary.failure||boundary.history.some(h=>h.result==='ERROR')||!boundary.history.length||boundary.history.at(-1)!.nextStepNo!==boundary.currentStepNo))throw new WorkflowValidationError();
+    return this.executeRun(saved.runId,saved.workflowSnapshot.currentStepNo??this.steps.keys().next().value!,maxExecutions,beforeStep,undefined,undefined,{checkpoint:saved,request:structuredClone(request)});
+  }
+  private async executeRun(runId:string,startStepNo:StepNo,maxExecutions:number,beforeStep?:()=>Promise<void>,seed?:RunSnapshot,operation?:WaitingOperation,restore?:{checkpoint:ArtifactWorkflowCheckpoint;request:CheckpointResumeRequest}):Promise<RunSnapshot>{
     requireText(runId);
     if(beforeStep!==undefined&&typeof beforeStep!=='function')throw new WorkflowValidationError();
     for(const step of this.steps.values()){if('job' in step)requireJob(step.job);else if('createJob' in step&&typeof step.createJob!=='function')throw new WorkflowValidationError();}
     if([...this.steps.values()].some(s=>'waitReason' in s)&&typeof (this.store as IWaitingHistoryStore).claimWaiting!=='function')throw new WorkflowValidationError();
     if (!this.steps.has(startStepNo)) throw new Error(`Unknown start step: ${startStepNo}`);
     if (!Number.isSafeInteger(maxExecutions) || maxExecutions < 1) throw new Error('Invalid execution limit');
+    if(this.store.requiresExecutionOwnership&&typeof this.store.assertCanExecuteStep!=='function')throw Object.assign(new Error('Execution ownership Port required'),{code:'EXECUTION_OWNERSHIP_REQUIRED'});
     let reserved = activeRuns.get(this.store);
     if (reserved?.has(runId)) throw Object.assign(new Error(`Run ID is executing: ${runId}`), {code:'RUN_BUSY'});
     // Registered Jobs/Checks may be stateful. Use a fresh graph for each independent run.
@@ -204,6 +245,19 @@ export class CWorkflow {
     reserved.add(runId); this.running = true;
     try {
     const existing=await this.store.load(runId);
+    if(restore){
+      checkArtifactClaimTarget(this.artifacts!,runId);
+        const claimedArtifacts=this.artifacts!.createSnapshot();
+        const claimed=await (this.store as IArtifactCheckpointStore).claimCheckpoint(restore.checkpoint,this.checkpointDefinition,claimedArtifacts,restore.request);
+      validateSnapshot(claimed.snapshot);
+      if(claimed.snapshot.runId!==runId)throw Object.assign(new Error('Run mismatch'),{code:'RUN_MISMATCH'});
+      if(claimed.replayed)return copySnapshot(claimed.snapshot);
+        // Do not execute with a manager changed while awaiting the claim response.
+        if(JSON.stringify(this.artifacts!.createSnapshot())!==JSON.stringify(claimedArtifacts))throw Object.assign(new Error('Artifacts changed during claim'),{code:'RESUME_STATE_CHANGED'});
+      if(claimed.snapshot.status!=='RUNNING'||claimed.snapshot.currentStepNo===null||!this.steps.has(claimed.snapshot.currentStepNo))throw new WorkflowValidationError();
+      seed=copySnapshot(claimed.snapshot);startStepNo=seed.currentStepNo!;
+      bindClaimedArtifacts(this.artifacts!,runId);
+    }else{
     if(seed)this.artifacts?.assertResume(runId);
     if(operation){
       const claimed=await (this.store as IWaitingHistoryStore).claimWaiting(seed!,operation);
@@ -212,6 +266,7 @@ export class CWorkflow {
     }else if(seed){if(JSON.stringify(existing)!==JSON.stringify(seed))throw Object.assign(new Error('Saved boundary changed'),{code:'RESUME_STATE_CHANGED'});}
     else if(existing)throw new Error(`Run ID already exists: ${runId}`);
     this.artifacts?.bindRun(runId);
+    }
     let current: StepNo | null = startStepNo;
     const history: TraceEntry[] = seed?seed.history.map(h=>({...h})):[];
     const initialHistoryLength=history.length;
@@ -219,6 +274,16 @@ export class CWorkflow {
     let waitSequence=seed?.waitSequence??0;
     const snapshot = (status: RunSnapshot['status']): RunSnapshot => copySnapshot({runId, currentStepNo: current, status, history,
       ...(waitSequence?{waitSequence}:{}),...(failure?{failure}:{})});
+    const assertOwnership=async():Promise<void>=>{
+      try{
+        if(typeof this.store.assertCanExecuteStep!=='function'){
+          if(this.store.requiresExecutionOwnership||restore)throw Object.assign(new Error('Execution ownership Port required'),{code:'EXECUTION_OWNERSHIP_REQUIRED'});
+          return;
+        }
+        await this.store.assertCanExecuteStep(snapshot('RUNNING'));
+      }
+      catch(cause){throw new WorkflowExecutionOwnershipError(cause);}
+    };
     const persist = async (value: RunSnapshot, primary?: {cause:unknown}): Promise<void> => {
       // A Store may retain its input. Keep Core-owned results/diagnostics separate.
       try {
@@ -236,6 +301,7 @@ export class CWorkflow {
     await persist(snapshot('RUNNING'));
     while (current !== null && history.length-initialHistoryLength < maxExecutions) {
       if (beforeStep) {
+        await assertOwnership();
         try { await beforeStep(); }
         catch (cause) {
           failure={code:'BEFORE_STEP_FAILED',stepNo:current,summary:'beforeStepで例外が発生しました'};
@@ -243,6 +309,7 @@ export class CWorkflow {
           throw new WorkflowRunError('BEFORE_STEP_FAILED',failed,cause);
         }
       }
+      await assertOwnership();
       const step: WorkflowStep = this.steps.get(current)!;
       if('waitReason' in step){
         waitSequence++;
@@ -258,6 +325,7 @@ export class CWorkflow {
         requireJob(job);
         if('createJob' in step && !(job instanceof CJob) && !(job instanceof CJobForm))throw new WorkflowValidationError();
         jobName=job.name;
+        await assertOwnership();
         if (job instanceof CCheckJob) {
           const branch = await job.evaluateBranch();
           result = branch.result ? 'TRUE' : 'FALSE'; next = branch.target;
@@ -267,6 +335,8 @@ export class CWorkflow {
           next = step.nextStepNo ?? null;
         }
       } catch (e) {
+        // Ownership failure must not execute another handler or attempt a FAILED save with stale credentials.
+        if(e instanceof WorkflowExecutionOwnershipError)throw e;
         history.push({order: history.length + 1, stepNo: current, job: jobName, result: 'ERROR',
           nextStepNo: null, at: new Date().toISOString(), error: String(e)});
         await persist(snapshot('FAILED'),{cause:e}); return snapshot('FAILED');

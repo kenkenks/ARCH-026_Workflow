@@ -1,0 +1,460 @@
+{
+  "purpose": "Stage 2-2B pre-execution ownership fix; no Stage 2-2C implementation",
+  "recordedAt": "2026-11-15T02:43:02.922Z",
+  "head": "3d2fd266d4f3e8e6c589acd1cde7e19a8a7782d9",
+  "changedSinceFixStart": [
+    "Frwk_Units/Workflow/docs/README.md",
+    "Frwk_Units/Workflow/src/CWorkflow.ts",
+    "Frwk_Units/Workflow/src/WorkflowBuilder.ts",
+    "Migration/README.md",
+    "Migration/registry.json",
+    "Migration/reports/history/execution-ownership-before-fix.json",
+    "Migration/reports/history/execution-ownership-fix-validation.json",
+    "Migration/reports/latest.json",
+    "Migration/reports/status.md",
+    "Migration/src/verifier.mjs",
+    "src/adapters/workflow-waiting/lifecycle.cjs",
+    "src/adapters/workflow-waiting/sqlite.cjs",
+    "tests/workflow-artifact-resume-process.test.cjs",
+    "tests/workflow-artifact-resume/child.cjs",
+    "tests/workflow-execution-ownership.test.cjs",
+    "tests/workflow-unit-package.test.cjs",
+    "tools/package-workflow-unit.cjs"
+  ],
+  "allStage22BChangedFiles": [
+    "Frwk_Units/Workflow/docs/README.md",
+    "Frwk_Units/Workflow/src/ArtifactManager.ts",
+    "Frwk_Units/Workflow/src/CWorkflow.ts",
+    "Frwk_Units/Workflow/src/WorkflowBuilder.ts",
+    "Migration/README.md",
+    "Migration/registry.json",
+    "Migration/reports/history/artifact-resume-before-stage22b.json",
+    "Migration/reports/history/artifact-resume-stage22b-validation.json",
+    "Migration/reports/history/execution-ownership-before-fix.json",
+    "Migration/reports/history/execution-ownership-fix-validation.json",
+    "Migration/reports/latest.json",
+    "Migration/reports/status.md",
+    "Migration/src/verifier.mjs",
+    "src/adapters/workflow-waiting/lifecycle.cjs",
+    "src/adapters/workflow-waiting/sqlite.cjs",
+    "tests/workflow-artifact-resume-process.test.cjs",
+    "tests/workflow-artifact-resume.test.cjs",
+    "tests/workflow-artifact-resume/child.cjs",
+    "tests/workflow-artifact-resume/scenario.cjs",
+    "tests/workflow-execution-ownership.test.cjs",
+    "tests/workflow-unit-package.test.cjs",
+    "tools/package-workflow-unit.cjs"
+  ],
+  "preservation": {
+    "docs/plans/PHASE-5B-minimal-contract-design.md": {
+      "before": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "after": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264"
+    },
+    "docs/architecture/ARCH-026_CMRP_設計対話整理_2026-11-07.md": {
+      "before": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "after": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff"
+    },
+    "docs/architecture/ARCH-026_Migration_Function_Inventory_20261106.md": {
+      "before": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "after": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd"
+    },
+    "docs/architecture/ARCH-026_Workflow_Function_Check_20261106.md": {
+      "before": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "after": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03"
+    },
+    "docs/architecture/ARCH-026_設計判断履歴_CJobFormとCJobの未定義_2026-11-08.md": {
+      "before": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "after": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz": {
+      "before": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "after": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz.json": {
+      "before": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "after": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz": {
+      "before": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "after": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz.json": {
+      "before": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "after": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz": {
+      "before": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "after": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz.json": {
+      "before": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "after": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz": {
+      "before": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "after": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz.json": {
+      "before": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "after": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz": {
+      "before": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "after": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz.json": {
+      "before": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "after": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz": {
+      "before": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "after": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz.json": {
+      "before": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "after": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz": {
+      "before": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "after": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz.json": {
+      "before": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "after": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz": {
+      "before": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "after": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz.json": {
+      "before": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "after": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz": {
+      "before": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "after": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz.json": {
+      "before": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "after": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz": {
+      "before": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "after": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz.json": {
+      "before": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "after": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz": {
+      "before": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "after": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz.json": {
+      "before": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "after": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz": {
+      "before": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "after": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz.json": {
+      "before": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "after": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz": {
+      "before": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "after": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz.json": {
+      "before": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "after": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz": {
+      "before": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "after": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz.json": {
+      "before": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "after": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz": {
+      "before": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "after": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz.json": {
+      "before": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "after": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a"
+    }
+  },
+  "tests": {
+    "ownership": 19,
+    "restoreClaim": 33,
+    "actualProcesses": 8,
+    "checkpoint": 39,
+    "unit": 80,
+    "related": 319,
+    "package": 6,
+    "root": 541,
+    "migrationManagement": 30,
+    "migrationAssets": 226,
+    "finalFail": 0,
+    "finalSkip": 0,
+    "overlap": "Not summed"
+  },
+  "migration": {
+    "registered": 37,
+    "verified": 37,
+    "warnings": 0,
+    "completeApprovals": 0,
+    "groups": [
+      {
+        "id": "db",
+        "result": "PASS",
+        "counts": {
+          "tests": 7,
+          "pass": 7,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "001118a1987a70f472db1089da7e67c7e9274587181d8b48684758baf01c76aa"
+      },
+      {
+        "id": "core",
+        "result": "PASS",
+        "counts": {
+          "tests": 3,
+          "pass": 3,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "42f0d8431254fe536fdd9577e80234e984188ab3253319055d5c4b0aafaf8631"
+      },
+      {
+        "id": "member",
+        "result": "PASS",
+        "counts": {
+          "tests": 3,
+          "pass": 3,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "0272fb476fefa719aded6c335259acd7a95fe9159dd87d2a4d5cada7da810db6"
+      },
+      {
+        "id": "time",
+        "result": "PASS",
+        "counts": {
+          "tests": 17,
+          "pass": 17,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "b5d931492e1fb00f2fbe1117f16d6c6bd53ec02c725102f7fadbff17edacd132"
+      },
+      {
+        "id": "workflow",
+        "result": "PASS",
+        "counts": {
+          "tests": 80,
+          "pass": 80,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "bfff102e46b92ab1732991964059af05a2e60b2a3c9e42c95830dcb3cf44b238"
+      },
+      {
+        "id": "public-api",
+        "result": "PASS",
+        "counts": {
+          "tests": 8,
+          "pass": 8,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "d57403d5c070231b085de390afd70d21cf434f2703155d8fc268945360aac7ca"
+      },
+      {
+        "id": "member-schema",
+        "result": "PASS",
+        "counts": {
+          "tests": 17,
+          "pass": 17,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "ebf0cf5f80023bc81825f14c9e0544e57ce276ca2a927cc10599bc955dca0be4"
+      },
+      {
+        "id": "artifact-checkpoint",
+        "result": "PASS",
+        "counts": {
+          "tests": 39,
+          "pass": 39,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "110befcf285ef4cb56c7f7a37a3e1dc2513f0e3e420444964125bf8790574172"
+      },
+      {
+        "id": "artifact-resume",
+        "result": "PASS",
+        "counts": {
+          "tests": 33,
+          "pass": 33,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "063408e197d0e59f7a2c31f94676d1345ad378ac23b80a2b9be61d3311822275"
+      },
+      {
+        "id": "execution-ownership",
+        "result": "PASS",
+        "counts": {
+          "tests": 19,
+          "pass": 19,
+          "fail": 0,
+          "skipped": 0
+        },
+        "fingerprint": "e5b506ae21a69569e29d750ee272cbf2b575a5fa737950e4999c6bc5d6b8e3c6"
+      }
+    ]
+  },
+  "package": {
+    "version": "0.3.0-framework.13",
+    "filename": "arch026-workflow-unit-0.3.0-framework.13.tgz",
+    "sha256": "f7b2c68c240df99ae1ff5213f832798428a2ed70fcfdd39655d437c4da96081a"
+  },
+  "logs": {
+    "logs/ownership-fix-tests-final.log": {
+      "sha256": "c8d6975136939184656f75c49b669c4b53b7dbe9de4ab03b3d1eebd70d74fcba",
+      "summary": [
+        "ℹ tests 19",
+        "ℹ pass 19",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-process.log": {
+      "sha256": "53408247b9c63d135c706d3fb3ef7784e9ba52f2faff11cc6d7df2a1efc3625c",
+      "summary": [
+        "ℹ tests 8",
+        "ℹ pass 8",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-final-tests.log": {
+      "sha256": "10ecb7e2cba0c6962bfa989490146ddb670fc16c182a715e40eaaac528065b38",
+      "summary": [
+        "ℹ tests 99",
+        "ℹ pass 99",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-unit.log": {
+      "sha256": "c90557485437a7fb8dfad480889d33f67ef45b7e6cf2ee47450ae36d19f56f2b",
+      "summary": [
+        "ℹ tests 80",
+        "ℹ pass 80",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-related.log": {
+      "sha256": "cb70259181b0e3a05bd4ffd0ce1e01d0a10d6f895418d31ed9376bbbc04a867d",
+      "summary": [
+        "ℹ tests 319",
+        "ℹ pass 319",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-package.log": {
+      "sha256": "83de7f7edfbb2d0277f004e4fbbffea1baf82de5d2bee1da783ca2eeb6c4b30c",
+      "summary": [
+        "ℹ tests 6",
+        "ℹ pass 6",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-root.log": {
+      "sha256": "31486bd188dc7bf36b26f6a29f4d18a29fc03d07d68d113691c683a445a0955d",
+      "summary": [
+        "ℹ tests 541",
+        "ℹ pass 541",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-management.log": {
+      "sha256": "75d7f774b865eb939186bfb79a3a1d4571cc1782d10f08d6de634b53a1fa7156",
+      "summary": [
+        "ℹ tests 30",
+        "ℹ pass 30",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ]
+    },
+    "logs/ownership-fix-final-assets.log": {
+      "sha256": "361560a1f39eef76647ef5ddf59ffdcf1520e607b67f4f734962d9745d802d57",
+      "summary": [
+        "# tests 7",
+        "# pass 7",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 3",
+        "# pass 3",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 3",
+        "# pass 3",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 17",
+        "# pass 17",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 80",
+        "# pass 80",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 8",
+        "# pass 8",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 17",
+        "# pass 17",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 39",
+        "# pass 39",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 33",
+        "# pass 33",
+        "# fail 0",
+        "# skipped 0",
+        "# tests 19",
+        "# pass 19",
+        "# fail 0",
+        "# skipped 0"
+      ]
+    },
+    "logs/ownership-fix-build-final.log": {
+      "sha256": "1af6cf5116f093fdae2bc7ec941be2c6067ff7b007b121a0bc0220a9b22d21cb",
+      "summary": []
+    }
+  },
+  "intermediateFailure": {
+    "reason": "Additional Factory fixture returned CDummyJob, which the existing visit Factory contract does not accept. Replaced with a native CJobForm; no guard/expectation weakened.",
+    "content": "✔ lease expires during beforeStep: no q execution and no checkpoint advance (1197.2127ms)\r\n✔ valid ownership permits execution and authoritative checks do not mutate the row (106.459ms)\r\n✔ changed owner after beforeStep refuses q without overwriting checkpoint (67.9055ms)\r\n✔ changed Revision after beforeStep refuses q without overwriting checkpoint (83.7618ms)\r\n✔ changed operation after beforeStep refuses q without overwriting checkpoint (80.0903ms)\r\n✔ changed execution position after beforeStep refuses q without overwriting checkpoint (80.5881ms)\r\n✔ new host obtains a real claim during a released boundary: old host executes no q and cannot save (81.8939ms)\r\n✔ WAITING Check evaluation is guarded after beforeStep (76.5663ms)\r\n✔ an already stale host cannot invoke the optional beforeStep hook (62.4077ms)\r\n✖ Factory side effects cannot skip the final ownership check before execute (68.7568ms)\r\n✔ backend inspection UNAVAILABLE is UNKNOWN and never executes or repairs (54.6623ms)\r\n✔ backend inspection OUTCOME_UNKNOWN is UNKNOWN and never executes or repairs (61.0249ms)\r\n✔ poisoned persistence is UNKNOWN, not a definite lease loss (69.4772ms)\r\n✔ missing required Port refuses reconstruction and execution before claim or save (58.5123ms)\r\n✔ runId mismatch is refused by the authoritative execution Port (58.6407ms)\r\n✔ Memory-only Workflow needs no ownership Port or SQLite (0.5109ms)\r\n✔ SQLite timestamp is used instead of a host Date.now override (63.2202ms)\r\nℹ tests 17\r\nℹ suites 0\r\nℹ pass 16\r\nℹ fail 1\r\nℹ cancelled 0\r\nℹ skipped 0\r\nℹ todo 0\r\nℹ duration_ms 2429.3167\r\n\r\n✖ failing tests:\r\n\r\ntest at tests\\workflow-execution-ownership.test.cjs:51:1\r\n✖ Factory side effects cannot skip the final ownership check before execute (68.7568ms)\r\n  AssertionError [ERR_ASSERTION]: The validation function is expected to return \"true\". Received false\r\n  \r\n  Caught error:\r\n  \r\n  WorkflowRunError: History save outcome is unknown\r\n      at async C:\\Users\\pxk07\\Documents\\道場サポ\\workspace\\ARCH-026_Workflow\\tests\\workflow-execution-ownership.test.cjs:57:2\r\n      at async fixture (C:\\Users\\pxk07\\Documents\\道場サポ\\workspace\\ARCH-026_Workflow\\tests\\workflow-execution-ownership.test.cjs:7:27)\r\n      at async Test.run (node:internal/test_runner/test:1313:7)\r\n      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {\r\n    generatedMessage: true,\r\n    code: 'ERR_ASSERTION',\r\n    actual: WorkflowRunError: History save outcome is unknown\r\n        at persist (C:\\Users\\pxk07\\Documents\\道場サポ\\workspace\\ARCH-026_Workflow\\dist\\Frwk_Units\\Workflow\\src\\CWorkflow.js:381:27)\r\n        at async CWorkflow.executeRun (C:\\Users\\pxk07\\Documents\\道場サポ\\workspace\\ARCH-026_Workflow\\dist\\Frwk_Units\\Workflow\\src\\CWorkflow.js:436:21)\r\n        at async waitForActual (node:assert:646:5)\r\n        ... 4 lines matching cause stack trace ...\r\n        at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {\r\n      [cause]: WorkflowValidationError: Invalid workflow input\r\n          at CWorkflow.executeRun (C:\\Users\\pxk07\\Documents\\道場サポ\\workspace\\ARCH-026_Workflow\\dist\\Frwk_Units\\Workflow\\src\\CWorkflow.js:414:31)\r\n          at async waitForActual (node:assert:646:5)\r\n          at async strict.rejects (node:assert:769:25)\r\n          at async C:\\Users\\pxk07\\Documents\\道場サポ\\workspace\\ARCH-026_Workflow\\tests\\workflow-execution-ownership.test.cjs:57:2\r\n          at async fixture (C:\\Users\\pxk07\\Documents\\道場サポ\\workspace\\ARCH-026_Workflow\\tests\\workflow-execution-ownership.test.cjs:7:27)\r\n          at async Test.run (node:internal/test_runner/test:1313:7)\r\n          at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)\r\n    },\r\n    operator: 'rejects',\r\n    diff: 'simple'\r\n  }\r\n",
+    "sha256": "d194f6c4b81e25da445ed571e7d7206aaf6999317e241e60027d006afe71ab51"
+  },
+  "rootCause": "Authoritative ownership was validated only when saving, not after beforeStep and before Job/Check execution.",
+  "contract": "Optional History Port; mandatory for restore and stores declaring requiresExecutionOwnership. SQLite inspect reads authoritative state and DB time without lease/revision/owner changes. Refusal and UNKNOWN errors are separate.",
+  "limit": "A point-in-time validation is not atomic protection of external side effects; lease may expire/change after verification or during a Job. External fencing/idempotency/transaction and comprehensive fault tests remain Stage 2-2C work.",
+  "git": "No stage, commit or push; held documents and existing 30 distribution files unchanged."
+}

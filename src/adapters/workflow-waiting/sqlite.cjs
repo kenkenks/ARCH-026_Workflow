@@ -7,6 +7,13 @@ class SQLiteLifecycleBackend {
  static initialize(file){SimpleDB.initialize(file,SCHEMA);}
  constructor(file){this.database=SimpleDB.open(file,SCHEMA);}
  read(id){const r=this.database.get('SELECT state_json FROM waiting_runs WHERE run_id=?',id);if(!r)return undefined;try{return JSON.parse(r.state_json);}catch{throw Object.assign(Error('DATA_CORRUPT'),{code:'DATA_CORRUPT'});}}
+ inspect(id,action){
+  let result,primary;
+  try{this.database.transaction(()=>{
+   const now=this.database.get("SELECT CAST(unixepoch('subsec')*1000 AS INTEGER) AS n").n;
+   try{result=action(this.read(id),now);}catch(e){primary=e;throw e;}
+  });}catch(e){throw primary||e;}return result;
+ }
  update(id,action,hooks={}){
   let next,primary;try{this.database.transaction(()=>{
    const now=this.database.get("SELECT CAST(unixepoch('subsec')*1000 AS INTEGER) AS n").n;

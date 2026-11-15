@@ -4,6 +4,13 @@ import {ARTIFACT_SNAPSHOT_FORMAT_VERSION,ARTIFACT_SNAPSHOT_CODEC_VERSION,encodeA
 import type {ArtifactSnapshot} from './ArtifactSnapshot';
 function fail(code:string):never{throw Object.assign(new Error(code),{code});}
 function name(value:unknown):asserts value is string{if(typeof value!=='string'||!value.trim())fail('INVALID_ARTIFACT_BOX');}
+const restoredManagers=new WeakSet<ArtifactManager>();
+const claimBindings=new WeakMap<ArtifactManager,(id:string)=>void>();
+const claimChecks=new WeakMap<ArtifactManager,(id:string)=>void>();
+/** @internal Checks an existing binding without changing it or authorizing execution. */
+export function checkArtifactClaimTarget(manager:ArtifactManager,id:string):void{const check=claimChecks.get(manager);if(!check)fail('ARTIFACT_CLAIM_REQUIRED');check(id);}
+/** @internal Not exported by the Unit entry. Called by CWorkflow only after a successful Store claim. */
+export function bindClaimedArtifacts(manager:ArtifactManager,id:string):void{const bind=claimBindings.get(manager);if(!bind)fail('ARTIFACT_CLAIM_REQUIRED');bind(id);}
 /** One Memory artifact region per execution. It never retains a Workflow or business Repository. */
 export class ArtifactManager {
   private readonly shelves=new Map<string,ProductShelf>();
@@ -24,6 +31,8 @@ export class ArtifactManager {
     for(const box of boxes){name(box);if(this.shelves.has(box))fail('DUPLICATE_ARTIFACT_BOX');this.shelves.set(box,this.ownedShelf(box));}
     for(const [box,shelf]of this.shelves)this.readers.set(box,Object.freeze({has:(key:string)=>shelf.has(key),get:(key:string)=>shelf.get(key)}));
     this.port=Object.freeze({hasBox:(box:string)=>this.hasBox(box),box:(box='default')=>this.reader(box)});
+    claimChecks.set(this,id=>{name(id);if(this.runId!==null&&this.runId!==id)fail('ARTIFACT_RUN_MISMATCH');});
+    claimBindings.set(this,id=>{checkArtifactClaimTarget(this,id);this.runId=id;});
   }
   hasBox(box:string):boolean{return this.shelves.has(box);}
   reader(box='default'):ProductReader{name(box);const value=this.readers.get(box);if(!value)fail('UNKNOWN_ARTIFACT_BOX');return value;}
@@ -43,10 +52,10 @@ export class ArtifactManager {
     }
     const manager=new ArtifactManager(boxes);
     for(const box of snapshot.boxes)for(const entry of box.entries)manager.shelf(box.name).put(entry.key,decodeArtifactValue(entry.encodedValue));
-    return manager;
+    restoredManagers.add(manager);return manager;
   }
   /** @internal Called only at an execution boundary. A retained manager is not a persistence format. */
-  bindRun(id:string):void{name(id);if(this.runId!==null&&this.runId!==id)fail('ARTIFACT_RUN_MISMATCH');this.runId=id;}
+  bindRun(id:string):void{if(restoredManagers.has(this))fail('ARTIFACT_CLAIM_REQUIRED');claimBindings.get(this)!(id);}
   /** @internal Refuse reconstruction with a fresh/serialized replacement after progress was saved. */
   assertResume(id:string):void{if(this.runId!==id)fail('ARTIFACT_RESTORE_UNSUPPORTED');}
 }

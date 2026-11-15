@@ -1,8 +1,8 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
-const root=path.resolve(__dirname,'..'),version='0.3.0-framework.10',name='@arch026/workflow-unit';
-const api={workflow:['WorkflowValidationError','CWorkflowTask','CJob','CDummyJob','CCheckJob','CSequenceBool','WorkflowRunError','CMemoryHistoryStore','CWorkflow','CWorkflowMonitor'],
- 'job-form':['createMemoryProductShelf','bindJobForm'],definition:['DEFINITION_SCHEMA_VERSION','WAITING_DEFINITION_SCHEMA_VERSION','ARTIFACT_DEFINITION_SCHEMA_VERSION','DefinitionError','validateDefinitionKey','validatePrototypeDefinition','reconstructWorkflow','loadWorkflow'],diagnosis:['diagnoseSavedRun']};
+const root=path.resolve(__dirname,'..'),version='0.3.0-framework.13',name='@arch026/workflow-unit';
+const api={workflow:['WorkflowValidationError','CWorkflowTask','CJob','CDummyJob','CCheckJob','CSequenceBool','WorkflowRunError','WorkflowExecutionOwnershipError','CMemoryHistoryStore','CWorkflow','CWorkflowMonitor'],
+ 'job-form':['createMemoryProductShelf','bindJobForm'],definition:['DEFINITION_SCHEMA_VERSION','WAITING_DEFINITION_SCHEMA_VERSION','ARTIFACT_DEFINITION_SCHEMA_VERSION','DefinitionError','validateDefinitionKey','validatePrototypeDefinition','reconstructWorkflow','loadWorkflow','restoreWorkflowCheckpoint'],diagnosis:['diagnoseSavedRun']};
 const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
 function execute(exe,args,cwd=root){const r=cp.spawnSync(exe,args,{cwd,encoding:'utf8',windowsHide:true});if(r.status!==0)throw Error(r.stderr||r.stdout||'command failed');return r.stdout;}
 function build(output=path.join(root,'runtime-data/workflow-unit')){

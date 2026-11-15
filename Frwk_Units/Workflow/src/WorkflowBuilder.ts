@@ -1,6 +1,7 @@
 import {CJob,CWorkflowTask,CCheckJob,CWorkflow} from './CWorkflow';
 import {CJobForm as ExecutableJobForm} from './CJobForm';
 import type {IWorkflowHistoryStore,WorkflowStep,TraceEntry} from './CWorkflow';
+import type {IArtifactCheckpointStore} from './CWorkflow';
 import {validatePrototypeDefinition,validateDefinitionKey,DefinitionError,ARTIFACT_DEFINITION_SCHEMA_VERSION} from './Definition';
 import {ArtifactManager} from './ArtifactManager';
 import type {DefinitionRepository,PrototypeDefinition} from './Definition';
@@ -51,7 +52,17 @@ export function reconstructWorkflow(input: unknown, registry: WorkflowRegistry, 
     if ((!(job instanceof CWorkflowTask) && !(job instanceof ExecutableJobForm)) || job instanceof CCheckJob || typeof job.execute !== 'function') throw new DefinitionError('INVALID_JOB_FACTORY');
     return { no: step.stepNo, job, ...(step.nextStepId === undefined ? {} : { nextStepNo: no.get(step.nextStepId)! }) };
   });
-  return { definition, workflow: new CWorkflow(steps, store,manager), startStepNo: no.get(definition.startStepId)!,...(manager?{artifacts:manager}:{}) };
+  return { definition, workflow: new CWorkflow(steps, store,manager,manager?structuredClone(definition):undefined), startStepNo: no.get(definition.startStepId)!,...(manager?{artifacts:manager}:{}) };
+}
+/** Rebuilds structure with an unbound restored manager. No claim or execution occurs here. */
+export async function restoreWorkflowCheckpoint(input:unknown,registry:WorkflowRegistry,store:IArtifactCheckpointStore){
+  const definition=validatePrototypeDefinition(input);
+  if(definition.schemaVersion!==ARTIFACT_DEFINITION_SCHEMA_VERSION||typeof store.readCheckpoint!=='function'||typeof store.validateCheckpointDefinition!=='function'||typeof store.claimCheckpoint!=='function')throw new DefinitionError('ARTIFACT_RESTORE_UNSUPPORTED');
+  if(typeof store.assertCanExecuteStep!=='function')throw new DefinitionError('EXECUTION_OWNERSHIP_REQUIRED');
+  const checkpoint=await store.readCheckpoint();if(!checkpoint)throw new DefinitionError('CHECKPOINT_NOT_FOUND');
+  await store.validateCheckpointDefinition(checkpoint,definition);
+  const artifacts=ArtifactManager.fromSnapshot(checkpoint.artifactSnapshot,definition.artifactBoxes);
+  return {...reconstructWorkflow(definition,registry,store,{history:checkpoint.workflowSnapshot.history},artifacts),checkpoint};
 }
 export async function loadWorkflow(repository: DefinitionRepository<PrototypeDefinition>, id: string, version: string, registry: WorkflowRegistry, store: IWorkflowHistoryStore, artifacts?:ArtifactManager) {
   validateDefinitionKey(id); validateDefinitionKey(version);
