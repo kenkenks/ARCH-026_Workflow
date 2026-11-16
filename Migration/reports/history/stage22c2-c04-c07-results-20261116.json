@@ -1,0 +1,2390 @@
+{
+  "schemaVersion": 1,
+  "recordType": "focused-sqlite-fault-characterization",
+  "stage": "Stage 2-2C-2 C04/C07のみ",
+  "recordedAt": "2026-11-16T10:27:40+09:00",
+  "targetCommit": "7d42c0e5be37a0895b17b877c34dabb0e9c7af52",
+  "branch": "main",
+  "environment": {
+    "node": "v24.16.0",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26300",
+    "sqliteVersion": "3.53.0"
+  },
+  "method": {
+    "command": "node --test tests/stage22c-sqlite-fault.test.cjs",
+    "workflowStorage": "既存SQLiteLifecycleBackend/WaitingHistoryStore/SimpleDBを一時DBへ利用。新しいWorkflowテーブル、DDL、Schema Migrationはない。",
+    "C04": "独立子プロセスの対象saveCheckpointにだけfixtureラップと既存beforeCommit/afterCommit Hookを設定。同期markerを一時ファイルへrenameで公開し、親はfs.watchで位置到達を確認してchild.kill()。Hook内はAtomics.waitで同期的に停止し、Transactionをasync化しない。任意sleepで終了位置を推測しない。",
+    "C04BoundaryProof": [
+      "before-transaction: 元の保存メソッド呼出し前、database.active=false。",
+      "updated-before-commit: 本物のUPDATE後の既存beforeCommit Hook、database.active=true。同一接続は新Revision6を読む一方、親の別接続は旧Revision5。",
+      "after-commit: 既存Backend afterCommit Hook、database.active=false。親の別接続も新Revision6を読む。"
+    ],
+    "C07": "所有権検証はbeforeStepで実接続closeまたは別SQLite接続のBEGIN IMMEDIATEを保持してから実行。保存障害はJob成功後の対象save直前に同じ実障害を設定。busy timeoutは既存値を変更せず、失敗後に試験所有のロックを解除するだけで自動再試行しない。",
+    "observation": "保存前後の完全Checkpointを既存readCheckpoint/Artifact Validatorへ通し、Workflow状態・Artifact内容・Revision・操作・ownerと履歴を比較。失敗時も別接続から読取確認。"
+  },
+  "observations": [
+    {
+      "scenario": "C04",
+      "boundary": "before-transaction",
+      "result": "PASS",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "synchronization": "Atomic marker rename at an existing synchronous save hook, then parent child.kill(); no timing sleep.",
+      "observed": {
+        "boundary": "before-transaction",
+        "oldCheckpoint": {
+          "formatVersion": "workflow-checkpoint/1",
+          "runId": "run",
+          "definition": {
+            "id": "restore-synthetic",
+            "version": "1",
+            "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+          },
+          "workflowSnapshot": {
+            "runId": "run",
+            "currentStepNo": 40,
+            "status": "RUNNING",
+            "history": [
+              {
+                "order": 1,
+                "stepNo": 10,
+                "job": "producer",
+                "result": "DONE",
+                "nextStepNo": 40,
+                "at": "2026-11-16T01:25:18.469Z"
+              }
+            ]
+          },
+          "artifactSnapshot": {
+            "formatVersion": "artifact-snapshot/1",
+            "codecVersion": "artifact-json/1",
+            "boxes": [
+              {
+                "name": "default",
+                "entries": [
+                  {
+                    "key": "U",
+                    "encodedValue": {
+                      "type": "undefined"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "empty",
+                "entries": []
+              },
+              {
+                "name": "review",
+                "entries": [
+                  {
+                    "key": "X",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "n",
+                          "value": {
+                            "type": "number",
+                            "value": 7
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "revision": 5,
+          "operationIdentifier": "operation-A",
+          "owner": {
+            "state": "ACTIVE",
+            "ownerId": "host-A",
+            "fence": 2,
+            "expiresAt": 1794792378639,
+            "tokenSha256": "c1f9c637996721ed827bcd945ea4b443519c2b21ef011f18f7eff68c3a110f30"
+          }
+        },
+        "intendedWorkflow": {
+          "runId": "run",
+          "currentStepNo": null,
+          "status": "COMPLETED",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.469Z"
+            },
+            {
+              "order": 2,
+              "stepNo": 40,
+              "job": "q",
+              "result": "DONE",
+              "nextStepNo": null,
+              "at": "2026-11-16T01:25:18.669Z"
+            }
+          ]
+        },
+        "intendedArtifacts": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "RESULT",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "boundary",
+                        "value": {
+                          "type": "string",
+                          "value": "before-transaction"
+                        }
+                      },
+                      {
+                        "key": "generation",
+                        "value": {
+                          "type": "string",
+                          "value": "new"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "visibleCheckpoint": {
+          "formatVersion": "workflow-checkpoint/1",
+          "runId": "run",
+          "definition": {
+            "id": "restore-synthetic",
+            "version": "1",
+            "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+          },
+          "workflowSnapshot": {
+            "runId": "run",
+            "currentStepNo": 40,
+            "status": "RUNNING",
+            "history": [
+              {
+                "order": 1,
+                "stepNo": 10,
+                "job": "producer",
+                "result": "DONE",
+                "nextStepNo": 40,
+                "at": "2026-11-16T01:25:18.469Z"
+              }
+            ]
+          },
+          "artifactSnapshot": {
+            "formatVersion": "artifact-snapshot/1",
+            "codecVersion": "artifact-json/1",
+            "boxes": [
+              {
+                "name": "default",
+                "entries": [
+                  {
+                    "key": "U",
+                    "encodedValue": {
+                      "type": "undefined"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "empty",
+                "entries": []
+              },
+              {
+                "name": "review",
+                "entries": [
+                  {
+                    "key": "X",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "n",
+                          "value": {
+                            "type": "number",
+                            "value": 7
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "revision": 5,
+          "operationIdentifier": "operation-A",
+          "owner": {
+            "state": "ACTIVE",
+            "ownerId": "host-A",
+            "fence": 2,
+            "expiresAt": 1794792378639,
+            "tokenSha256": "c1f9c637996721ed827bcd945ea4b443519c2b21ef011f18f7eff68c3a110f30"
+          }
+        },
+        "counts": {
+          "started": 1,
+          "completed": 1
+        },
+        "transactionActive": false
+      },
+      "committedViewBeforeKill": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.469Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792378639,
+          "tokenSha256": "c1f9c637996721ed827bcd945ea4b443519c2b21ef011f18f7eff68c3a110f30"
+        }
+      },
+      "afterRestart": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.469Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792378639,
+          "tokenSha256": "c1f9c637996721ed827bcd945ea4b443519c2b21ef011f18f7eff68c3a110f30"
+        }
+      },
+      "exit": {
+        "code": null,
+        "signal": "SIGTERM"
+      },
+      "jobCounts": {
+        "started": 1,
+        "completed": 1
+      },
+      "mixedGenerationAccepted": false,
+      "readAndValidator": "PASS",
+      "limit": "Three exact boundaries only; not native COMMIT-internal interruption, power loss, or arbitrary semantic tampering."
+    },
+    {
+      "scenario": "C04",
+      "boundary": "updated-before-commit",
+      "result": "PASS",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "synchronization": "Atomic marker rename at an existing synchronous save hook, then parent child.kill(); no timing sleep.",
+      "observed": {
+        "boundary": "updated-before-commit",
+        "oldCheckpoint": {
+          "formatVersion": "workflow-checkpoint/1",
+          "runId": "run",
+          "definition": {
+            "id": "restore-synthetic",
+            "version": "1",
+            "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+          },
+          "workflowSnapshot": {
+            "runId": "run",
+            "currentStepNo": 40,
+            "status": "RUNNING",
+            "history": [
+              {
+                "order": 1,
+                "stepNo": 10,
+                "job": "producer",
+                "result": "DONE",
+                "nextStepNo": 40,
+                "at": "2026-11-16T01:25:18.725Z"
+              }
+            ]
+          },
+          "artifactSnapshot": {
+            "formatVersion": "artifact-snapshot/1",
+            "codecVersion": "artifact-json/1",
+            "boxes": [
+              {
+                "name": "default",
+                "entries": [
+                  {
+                    "key": "U",
+                    "encodedValue": {
+                      "type": "undefined"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "empty",
+                "entries": []
+              },
+              {
+                "name": "review",
+                "entries": [
+                  {
+                    "key": "X",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "n",
+                          "value": {
+                            "type": "number",
+                            "value": 7
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "revision": 5,
+          "operationIdentifier": "operation-A",
+          "owner": {
+            "state": "ACTIVE",
+            "ownerId": "host-A",
+            "fence": 2,
+            "expiresAt": 1794792378905,
+            "tokenSha256": "9310e0e5bf68d546ce00f22636b527da7b372972feca2efa38086b7d6f7e8a6b"
+          }
+        },
+        "intendedWorkflow": {
+          "runId": "run",
+          "currentStepNo": null,
+          "status": "COMPLETED",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.725Z"
+            },
+            {
+              "order": 2,
+              "stepNo": 40,
+              "job": "q",
+              "result": "DONE",
+              "nextStepNo": null,
+              "at": "2026-11-16T01:25:18.932Z"
+            }
+          ]
+        },
+        "intendedArtifacts": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "RESULT",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "boundary",
+                        "value": {
+                          "type": "string",
+                          "value": "updated-before-commit"
+                        }
+                      },
+                      {
+                        "key": "generation",
+                        "value": {
+                          "type": "string",
+                          "value": "new"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "visibleCheckpoint": {
+          "formatVersion": "workflow-checkpoint/1",
+          "runId": "run",
+          "definition": {
+            "id": "restore-synthetic",
+            "version": "1",
+            "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+          },
+          "workflowSnapshot": {
+            "runId": "run",
+            "currentStepNo": null,
+            "status": "COMPLETED",
+            "history": [
+              {
+                "order": 1,
+                "stepNo": 10,
+                "job": "producer",
+                "result": "DONE",
+                "nextStepNo": 40,
+                "at": "2026-11-16T01:25:18.725Z"
+              },
+              {
+                "order": 2,
+                "stepNo": 40,
+                "job": "q",
+                "result": "DONE",
+                "nextStepNo": null,
+                "at": "2026-11-16T01:25:18.932Z"
+              }
+            ]
+          },
+          "artifactSnapshot": {
+            "formatVersion": "artifact-snapshot/1",
+            "codecVersion": "artifact-json/1",
+            "boxes": [
+              {
+                "name": "default",
+                "entries": [
+                  {
+                    "key": "RESULT",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "boundary",
+                          "value": {
+                            "type": "string",
+                            "value": "updated-before-commit"
+                          }
+                        },
+                        {
+                          "key": "generation",
+                          "value": {
+                            "type": "string",
+                            "value": "new"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "key": "U",
+                    "encodedValue": {
+                      "type": "undefined"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "empty",
+                "entries": []
+              },
+              {
+                "name": "review",
+                "entries": [
+                  {
+                    "key": "X",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "n",
+                          "value": {
+                            "type": "number",
+                            "value": 7
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "revision": 6,
+          "operationIdentifier": "operation-A",
+          "owner": {
+            "state": "RELEASED",
+            "ownerId": "host-A",
+            "fence": 2,
+            "expiresAt": 1794792318933,
+            "tokenSha256": "9310e0e5bf68d546ce00f22636b527da7b372972feca2efa38086b7d6f7e8a6b"
+          }
+        },
+        "counts": {
+          "started": 1,
+          "completed": 1
+        },
+        "transactionActive": true
+      },
+      "committedViewBeforeKill": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.725Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792378905,
+          "tokenSha256": "9310e0e5bf68d546ce00f22636b527da7b372972feca2efa38086b7d6f7e8a6b"
+        }
+      },
+      "afterRestart": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.725Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792378905,
+          "tokenSha256": "9310e0e5bf68d546ce00f22636b527da7b372972feca2efa38086b7d6f7e8a6b"
+        }
+      },
+      "exit": {
+        "code": null,
+        "signal": "SIGTERM"
+      },
+      "jobCounts": {
+        "started": 1,
+        "completed": 1
+      },
+      "mixedGenerationAccepted": false,
+      "readAndValidator": "PASS",
+      "limit": "Three exact boundaries only; not native COMMIT-internal interruption, power loss, or arbitrary semantic tampering."
+    },
+    {
+      "scenario": "C04",
+      "boundary": "after-commit",
+      "result": "PASS",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "synchronization": "Atomic marker rename at an existing synchronous save hook, then parent child.kill(); no timing sleep.",
+      "observed": {
+        "boundary": "after-commit",
+        "oldCheckpoint": {
+          "formatVersion": "workflow-checkpoint/1",
+          "runId": "run",
+          "definition": {
+            "id": "restore-synthetic",
+            "version": "1",
+            "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+          },
+          "workflowSnapshot": {
+            "runId": "run",
+            "currentStepNo": 40,
+            "status": "RUNNING",
+            "history": [
+              {
+                "order": 1,
+                "stepNo": 10,
+                "job": "producer",
+                "result": "DONE",
+                "nextStepNo": 40,
+                "at": "2026-11-16T01:25:18.989Z"
+              }
+            ]
+          },
+          "artifactSnapshot": {
+            "formatVersion": "artifact-snapshot/1",
+            "codecVersion": "artifact-json/1",
+            "boxes": [
+              {
+                "name": "default",
+                "entries": [
+                  {
+                    "key": "U",
+                    "encodedValue": {
+                      "type": "undefined"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "empty",
+                "entries": []
+              },
+              {
+                "name": "review",
+                "entries": [
+                  {
+                    "key": "X",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "n",
+                          "value": {
+                            "type": "number",
+                            "value": 7
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "revision": 5,
+          "operationIdentifier": "operation-A",
+          "owner": {
+            "state": "ACTIVE",
+            "ownerId": "host-A",
+            "fence": 2,
+            "expiresAt": 1794792379172,
+            "tokenSha256": "4e8ccea5857965218765cc0a7b7a2fbd345646a36ba5839fa154295430148b64"
+          }
+        },
+        "intendedWorkflow": {
+          "runId": "run",
+          "currentStepNo": null,
+          "status": "COMPLETED",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.989Z"
+            },
+            {
+              "order": 2,
+              "stepNo": 40,
+              "job": "q",
+              "result": "DONE",
+              "nextStepNo": null,
+              "at": "2026-11-16T01:25:19.192Z"
+            }
+          ]
+        },
+        "intendedArtifacts": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "RESULT",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "boundary",
+                        "value": {
+                          "type": "string",
+                          "value": "after-commit"
+                        }
+                      },
+                      {
+                        "key": "generation",
+                        "value": {
+                          "type": "string",
+                          "value": "new"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "visibleCheckpoint": {
+          "formatVersion": "workflow-checkpoint/1",
+          "runId": "run",
+          "definition": {
+            "id": "restore-synthetic",
+            "version": "1",
+            "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+          },
+          "workflowSnapshot": {
+            "runId": "run",
+            "currentStepNo": null,
+            "status": "COMPLETED",
+            "history": [
+              {
+                "order": 1,
+                "stepNo": 10,
+                "job": "producer",
+                "result": "DONE",
+                "nextStepNo": 40,
+                "at": "2026-11-16T01:25:18.989Z"
+              },
+              {
+                "order": 2,
+                "stepNo": 40,
+                "job": "q",
+                "result": "DONE",
+                "nextStepNo": null,
+                "at": "2026-11-16T01:25:19.192Z"
+              }
+            ]
+          },
+          "artifactSnapshot": {
+            "formatVersion": "artifact-snapshot/1",
+            "codecVersion": "artifact-json/1",
+            "boxes": [
+              {
+                "name": "default",
+                "entries": [
+                  {
+                    "key": "RESULT",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "boundary",
+                          "value": {
+                            "type": "string",
+                            "value": "after-commit"
+                          }
+                        },
+                        {
+                          "key": "generation",
+                          "value": {
+                            "type": "string",
+                            "value": "new"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "key": "U",
+                    "encodedValue": {
+                      "type": "undefined"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "empty",
+                "entries": []
+              },
+              {
+                "name": "review",
+                "entries": [
+                  {
+                    "key": "X",
+                    "encodedValue": {
+                      "type": "object",
+                      "value": [
+                        {
+                          "key": "n",
+                          "value": {
+                            "type": "number",
+                            "value": 7
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "revision": 6,
+          "operationIdentifier": "operation-A",
+          "owner": {
+            "state": "RELEASED",
+            "ownerId": "host-A",
+            "fence": 2,
+            "expiresAt": 1794792319194,
+            "tokenSha256": "4e8ccea5857965218765cc0a7b7a2fbd345646a36ba5839fa154295430148b64"
+          }
+        },
+        "counts": {
+          "started": 1,
+          "completed": 1
+        },
+        "transactionActive": false
+      },
+      "committedViewBeforeKill": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": null,
+          "status": "COMPLETED",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.989Z"
+            },
+            {
+              "order": 2,
+              "stepNo": 40,
+              "job": "q",
+              "result": "DONE",
+              "nextStepNo": null,
+              "at": "2026-11-16T01:25:19.192Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "RESULT",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "boundary",
+                        "value": {
+                          "type": "string",
+                          "value": "after-commit"
+                        }
+                      },
+                      {
+                        "key": "generation",
+                        "value": {
+                          "type": "string",
+                          "value": "new"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 6,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "RELEASED",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792319194,
+          "tokenSha256": "4e8ccea5857965218765cc0a7b7a2fbd345646a36ba5839fa154295430148b64"
+        }
+      },
+      "afterRestart": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": null,
+          "status": "COMPLETED",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:18.989Z"
+            },
+            {
+              "order": 2,
+              "stepNo": 40,
+              "job": "q",
+              "result": "DONE",
+              "nextStepNo": null,
+              "at": "2026-11-16T01:25:19.192Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "RESULT",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "boundary",
+                        "value": {
+                          "type": "string",
+                          "value": "after-commit"
+                        }
+                      },
+                      {
+                        "key": "generation",
+                        "value": {
+                          "type": "string",
+                          "value": "new"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 6,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "RELEASED",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792319194,
+          "tokenSha256": "4e8ccea5857965218765cc0a7b7a2fbd345646a36ba5839fa154295430148b64"
+        }
+      },
+      "exit": {
+        "code": null,
+        "signal": "SIGTERM"
+      },
+      "jobCounts": {
+        "started": 1,
+        "completed": 1
+      },
+      "mixedGenerationAccepted": false,
+      "readAndValidator": "PASS",
+      "limit": "Three exact boundaries only; not native COMMIT-internal interruption, power loss, or arbitrary semantic tampering."
+    },
+    {
+      "scenario": "C07",
+      "mode": "ownership-connection-closed",
+      "result": "PASS",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "injection": "Real Host A connection closed at an acknowledged hook/save boundary.",
+      "jobCounts": {
+        "started": 0,
+        "completed": 0
+      },
+      "error": {
+        "code": "EXECUTION_OWNERSHIP_UNKNOWN",
+        "outcome": "UNKNOWN",
+        "cause": {
+          "code": "UNAVAILABLE"
+        }
+      },
+      "beforeFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.251Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379271,
+          "tokenSha256": "664b926462e02ee6f2a6b61c6a715e40976807872b9332317b908d5ae90a0ce3"
+        }
+      },
+      "afterFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.251Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379271,
+          "tokenSha256": "664b926462e02ee6f2a6b61c6a715e40976807872b9332317b908d5ae90a0ce3"
+        }
+      },
+      "checkpointUnchanged": true,
+      "persistedResult": false,
+      "memoryResult": false,
+      "fallbackObserved": false,
+      "note": "Ownership could not be verified: Job never started. No Memory execution or automatic reconnection/retry."
+    },
+    {
+      "scenario": "C07",
+      "mode": "ownership-write-lock",
+      "result": "PASS",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "injection": "Separate SQLite connection holds BEGIN IMMEDIATE; production bounded busy timeout is unchanged.",
+      "jobCounts": {
+        "started": 0,
+        "completed": 0
+      },
+      "error": {
+        "code": "EXECUTION_OWNERSHIP_UNKNOWN",
+        "outcome": "UNKNOWN",
+        "cause": {
+          "code": "UNAVAILABLE",
+          "sqliteCode": 5,
+          "transactionPhase": "BEGIN",
+          "rollbackConfirmed": true
+        }
+      },
+      "beforeFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.330Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379362,
+          "tokenSha256": "41bcb166b7487aa4fcd131dcbebf09a6a0047369a8af2c7331ee55af4aadc46e"
+        }
+      },
+      "afterFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.330Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379362,
+          "tokenSha256": "41bcb166b7487aa4fcd131dcbebf09a6a0047369a8af2c7331ee55af4aadc46e"
+        }
+      },
+      "checkpointUnchanged": true,
+      "persistedResult": false,
+      "memoryResult": false,
+      "fallbackObserved": false,
+      "note": "Ownership could not be verified: Job never started. No Memory execution or automatic reconnection/retry."
+    },
+    {
+      "scenario": "C07",
+      "mode": "save-connection-closed",
+      "result": "PASS",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "injection": "Real Host A connection closed at an acknowledged hook/save boundary.",
+      "jobCounts": {
+        "started": 1,
+        "completed": 1
+      },
+      "error": {
+        "code": "HISTORY_SAVE_OUTCOME_UNKNOWN",
+        "outcome": "UNKNOWN",
+        "cause": {
+          "code": "UNAVAILABLE"
+        },
+        "storageCause": {
+          "code": "UNAVAILABLE"
+        },
+        "observationState": "UNAVAILABLE"
+      },
+      "beforeFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.593Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379623,
+          "tokenSha256": "9c11ee3557f9cb9e09e46ca93b3e87ee6cfdf01c5c6cb4a785fa37de890be98b"
+        }
+      },
+      "afterFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.593Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379623,
+          "tokenSha256": "9c11ee3557f9cb9e09e46ca93b3e87ee6cfdf01c5c6cb4a785fa37de890be98b"
+        }
+      },
+      "checkpointUnchanged": true,
+      "persistedResult": false,
+      "memoryResult": true,
+      "fallbackObserved": false,
+      "note": "Job had already succeeded before the save failed; its normal Memory publication is not a fallback. Workflow returned UNKNOWN, not success."
+    },
+    {
+      "scenario": "C07",
+      "mode": "save-write-lock",
+      "result": "PASS",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64"
+      },
+      "injection": "Separate SQLite connection holds BEGIN IMMEDIATE; production bounded busy timeout is unchanged.",
+      "jobCounts": {
+        "started": 1,
+        "completed": 1
+      },
+      "error": {
+        "code": "HISTORY_SAVE_OUTCOME_UNKNOWN",
+        "outcome": "UNKNOWN",
+        "cause": {
+          "code": "UNAVAILABLE",
+          "sqliteCode": 5,
+          "transactionPhase": "BEGIN",
+          "rollbackConfirmed": true
+        },
+        "storageCause": {
+          "code": "UNAVAILABLE",
+          "sqliteCode": 5,
+          "transactionPhase": "BEGIN",
+          "rollbackConfirmed": true
+        },
+        "observationState": "AVAILABLE"
+      },
+      "beforeFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.700Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379709,
+          "tokenSha256": "5b62bf73fc299a78989a80b4483ae61b6bb8f196d13a6053935f03f31df8ff7b"
+        }
+      },
+      "afterFault": {
+        "formatVersion": "workflow-checkpoint/1",
+        "runId": "run",
+        "definition": {
+          "id": "restore-synthetic",
+          "version": "1",
+          "digest": "47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b"
+        },
+        "workflowSnapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T01:25:19.700Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "revision": 5,
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794792379709,
+          "tokenSha256": "5b62bf73fc299a78989a80b4483ae61b6bb8f196d13a6053935f03f31df8ff7b"
+        }
+      },
+      "checkpointUnchanged": true,
+      "persistedResult": false,
+      "memoryResult": true,
+      "fallbackObserved": false,
+      "note": "Job had already succeeded before the save failed; its normal Memory publication is not a fallback. Workflow returned UNKNOWN, not success."
+    }
+  ],
+  "verdicts": {
+    "C04": {
+      "result": "PASS",
+      "riskBefore": "B",
+      "riskAfter": "B",
+      "basis": "要求された3同期点のクラッシュでは、旧完全状態/新完全状態だけが受理された。混在世代は観測せず、改竄・破損を黙って補完する動作も観測していない。",
+      "remaining": "ネイティブCOMMIT内部、電源断/OS・媒体障害、任意に改竄されたArtifact値の意味的な世代対応は未確認。3同期点の結果だけで包括的保証へ拡張せずBを維持する。"
+    },
+    "C07": {
+      "result": "PASS",
+      "riskBefore": "B",
+      "riskAfter": "B",
+      "basis": "所有権接続切断/実ロックではEXECUTION_OWNERSHIP_UNKNOWNでJob0。保存接続切断/実ロックでは既に成功したJob1の後HISTORY_SAVE_OUTCOME_UNKNOWN。全ケースCheckpoint非更新、Workflow成功応答なし、Memoryへの暗黙切替なし。",
+      "remaining": "恒久的な媒体/OS障害、運用上の復旧判断、所有権検証後の競合窓まで解消したとは扱わずB維持。"
+    },
+    "escalation": "本試行に重大な破損、判定不能後の新規Job起動、暗黙Memory fallbackの実証はなく、Aへ昇格しない。これらが別条件で再現されればA対応を検討する。"
+  },
+  "keyFindings": [
+    "C04: 開始前はRevision5/RUNNING/RESULTなし。UPDATE後COMMIT前は子の保留状態6/COMPLETED/RESULTあり、終了・再読込後は旧5/RUNNING/RESULTなしへ戻る。COMMIT後は6/COMPLETED/RESULTあり、owner RELEASEDと操作FINISHEDが一致する。",
+    "C04: Job開始/成功は各ケース1回。保存前後の完全値を比較し、履歴・全箱・Revisionの異世代混在を正常受理した観測は0。",
+    "C07: 所有権障害2ケースはJob開始/成功0、保存障害2ケースは障害前にJob開始/成功1。保存障害後にJobが再実行された観測はない。",
+    "C07: lockでは原因UNAVAILABLE、sqliteCode5(SQLITE_BUSY)、transactionPhase BEGIN、rollbackConfirmed=true。closeでは原因UNAVAILABLE。known lease失効と判定不能は混同していない。",
+    "C07: 保存closeの観測状態はUNAVAILABLE、保存lockはAVAILABLEでも成功/未保存を断定せずUNKNOWNを維持。全ケース保存済み状態はRUNNING/Revision5のまま。",
+    "保存失敗時のMemory RESULTは正常postの先行公開であり、障害後のMemory fallbackではない。Workflowは成功結果を返していない。"
+  ],
+  "limits": [
+    "C04の世代確認は、この試験で用意した旧/新のWorkflow・Artifact全体との一致による。Artifact Snapshot自体にCheckpoint Revision識別子があるとは主張せず、任意の意味的改竄を一般に検出する証拠ではない。",
+    "child.killはプロセス終了であり、電源断ではない。ネイティブCOMMIT実行中の任意地点へ正確に割り込んだとは扱わない。",
+    "故障解除後の新claim・同時claim・長時間停止後再開は今回実行しておらず、C05/C10の検証結果に含めない。",
+    "全回帰・Build・配布再生成・Migration再検証・全体採点は行っていない。"
+  ],
+  "minimalOptions": [
+    {
+      "topic": "C04",
+      "proposal": "現在の単一Transaction/単一state_jsonと共通Validatorを維持する。未確認の実ストレージ障害を扱う場合は対象条件を限定した別試験とバックアップ/破損時の停止手順を検討し、先にSchemaや新Storeを追加しない。",
+      "implemented": false
+    },
+    {
+      "topic": "C07",
+      "proposal": "原因code/sqliteCode/phase/outcomeを保存し、接続とロックの復旧確認、RUNNING/UNKNOWNの人手照合手順を整理する。自動再claim、無制限リトライ、Memory切替で隠さない。",
+      "implemented": false
+    }
+  ],
+  "testExecution": {
+    "firstRun": {
+      "pass": 4,
+      "fail": 3,
+      "skip": 0,
+      "reason": "C04の観測DTOをJSON化するとundefinedのtokenキーが消える一方、親の射影にはtoken:undefinedが残り、deepStrictEqualが失敗した。製品データの不整合ではない。テスト側の双方の射影からtoken自体を除き、token hashで比較するよう修正した。",
+      "logFile": "logs/stage22c2-c04-c07.log",
+      "sha256": "6243238ccdc6e07c93ec3ed9416851e9b5e630a0f9a53c922c4b38a3584eb014",
+      "failureLog": "✖ C04: real process termination before-transaction (267.7688ms)\r\n✖ C04: real process termination updated-before-commit (244.3999ms)\r\nSTAGE22C_SQLITE_OBSERVATION {\"scenario\":\"C07\",\"mode\":\"ownership-connection-closed\",\"result\":\"PASS\",\"environment\":{\"node\":\"v24.16.0\",\"platform\":\"win32\",\"arch\":\"x64\"},\"injection\":\"Real Host A connection closed at an acknowledged hook/save boundary.\",\"jobCounts\":{\"started\":0,\"completed\":0},\"error\":{\"code\":\"EXECUTION_OWNERSHIP_UNKNOWN\",\"outcome\":\"UNKNOWN\",\"cause\":{\"code\":\"UNAVAILABLE\"}},\"beforeFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:58.571Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792358599,\"tokenSha256\":\"01523d738efe8b8b320d2768a15a5fdd017ad9d44909bb162da05962800e98f4\"}},\"afterFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:58.571Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792358599,\"tokenSha256\":\"01523d738efe8b8b320d2768a15a5fdd017ad9d44909bb162da05962800e98f4\"}},\"checkpointUnchanged\":true,\"persistedResult\":false,\"memoryResult\":false,\"fallbackObserved\":false,\"note\":\"Ownership could not be verified: Job never started. No Memory execution or automatic reconnection/retry.\"}\r\nSTAGE22C_SQLITE_OBSERVATION {\"scenario\":\"C07\",\"mode\":\"ownership-write-lock\",\"result\":\"PASS\",\"environment\":{\"node\":\"v24.16.0\",\"platform\":\"win32\",\"arch\":\"x64\"},\"injection\":\"Separate SQLite connection holds BEGIN IMMEDIATE; production bounded busy timeout is unchanged.\",\"jobCounts\":{\"started\":0,\"completed\":0},\"error\":{\"code\":\"EXECUTION_OWNERSHIP_UNKNOWN\",\"outcome\":\"UNKNOWN\",\"cause\":{\"code\":\"UNAVAILABLE\",\"sqliteCode\":5,\"transactionPhase\":\"BEGIN\",\"rollbackConfirmed\":true}},\"beforeFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:58.652Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792358670,\"tokenSha256\":\"d129faa51ee4ab01fb4f7bb06059e9531375988d9dbc01e8dd67c582f7943e01\"}},\"afterFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:58.652Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792358670,\"tokenSha256\":\"d129faa51ee4ab01fb4f7bb06059e9531375988d9dbc01e8dd67c582f7943e01\"}},\"checkpointUnchanged\":true,\"persistedResult\":false,\"memoryResult\":false,\"fallbackObserved\":false,\"note\":\"Ownership could not be verified: Job never started. No Memory execution or automatic reconnection/retry.\"}\r\nSTAGE22C_SQLITE_OBSERVATION {\"scenario\":\"C07\",\"mode\":\"save-connection-closed\",\"result\":\"PASS\",\"environment\":{\"node\":\"v24.16.0\",\"platform\":\"win32\",\"arch\":\"x64\"},\"injection\":\"Real Host A connection closed at an acknowledged hook/save boundary.\",\"jobCounts\":{\"started\":1,\"completed\":1},\"error\":{\"code\":\"HISTORY_SAVE_OUTCOME_UNKNOWN\",\"outcome\":\"UNKNOWN\",\"cause\":{\"code\":\"UNAVAILABLE\"},\"storageCause\":{\"code\":\"UNAVAILABLE\"},\"observationState\":\"UNAVAILABLE\"},\"beforeFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:58.925Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792358958,\"tokenSha256\":\"777c3aa847e9ffe8f82a1d1038b023b18570f7bbd1e030f00d51d9183cd3d721\"}},\"afterFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:58.925Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792358958,\"tokenSha256\":\"777c3aa847e9ffe8f82a1d1038b023b18570f7bbd1e030f00d51d9183cd3d721\"}},\"checkpointUnchanged\":true,\"persistedResult\":false,\"memoryResult\":true,\"fallbackObserved\":false,\"note\":\"Job had already succeeded before the save failed; its normal Memory publication is not a fallback. Workflow returned UNKNOWN, not success.\"}\r\nSTAGE22C_SQLITE_OBSERVATION {\"scenario\":\"C07\",\"mode\":\"save-write-lock\",\"result\":\"PASS\",\"environment\":{\"node\":\"v24.16.0\",\"platform\":\"win32\",\"arch\":\"x64\"},\"injection\":\"Separate SQLite connection holds BEGIN IMMEDIATE; production bounded busy timeout is unchanged.\",\"jobCounts\":{\"started\":1,\"completed\":1},\"error\":{\"code\":\"HISTORY_SAVE_OUTCOME_UNKNOWN\",\"outcome\":\"UNKNOWN\",\"cause\":{\"code\":\"UNAVAILABLE\",\"sqliteCode\":5,\"transactionPhase\":\"BEGIN\",\"rollbackConfirmed\":true},\"storageCause\":{\"code\":\"UNAVAILABLE\",\"sqliteCode\":5,\"transactionPhase\":\"BEGIN\",\"rollbackConfirmed\":true},\"observationState\":\"AVAILABLE\"},\"beforeFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:59.042Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792359070,\"tokenSha256\":\"e2981756f4ae5898e51510de392ddb40b4c723b6b0a41fca0068b2779af48f63\"}},\"afterFault\":{\"formatVersion\":\"workflow-checkpoint/1\",\"runId\":\"run\",\"definition\":{\"id\":\"restore-synthetic\",\"version\":\"1\",\"digest\":\"47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b\"},\"workflowSnapshot\":{\"runId\":\"run\",\"currentStepNo\":40,\"status\":\"RUNNING\",\"history\":[{\"order\":1,\"stepNo\":10,\"job\":\"producer\",\"result\":\"DONE\",\"nextStepNo\":40,\"at\":\"2026-11-16T01:24:59.042Z\"}]},\"artifactSnapshot\":{\"formatVersion\":\"artifact-snapshot/1\",\"codecVersion\":\"artifact-json/1\",\"boxes\":[{\"name\":\"default\",\"entries\":[{\"key\":\"U\",\"encodedValue\":{\"type\":\"undefined\"}}]},{\"name\":\"empty\",\"entries\":[]},{\"name\":\"review\",\"entries\":[{\"key\":\"X\",\"encodedValue\":{\"type\":\"object\",\"value\":[{\"key\":\"n\",\"value\":{\"type\":\"number\",\"value\":7}}]}}]}]},\"revision\":5,\"operationIdentifier\":\"operation-A\",\"owner\":{\"state\":\"ACTIVE\",\"ownerId\":\"host-A\",\"fence\":2,\"expiresAt\":1794792359070,\"tokenSha256\":\"e2981756f4ae5898e51510de392ddb40b4c723b6b0a41fca0068b2779af48f63\"}},\"checkpointUnchanged\":true,\"persistedResult\":false,\"memoryResult\":true,\"fallbackObserved\":false,\"note\":\"Job had already succeeded before the save failed; its normal Memory publication is not a fallback. Workflow returned UNKNOWN, not success.\"}\r\n✖ C04: real process termination after-commit (233.8384ms)\r\n✔ C07: ownership-connection-closed (88.936ms)\r\n✔ C07: ownership-write-lock (249.8997ms)\r\n✔ C07: save-connection-closed (120.9205ms)\r\n✔ C07: save-write-lock (298.4203ms)\r\nℹ tests 7\r\nℹ suites 0\r\nℹ pass 4\r\nℹ fail 3\r\nℹ cancelled 0\r\nℹ skipped 0\r\nℹ todo 0\r\nℹ duration_ms 1666.0735\r\n\r\n✖ failing tests:\r\n\r\ntest at tests\\stage22c-sqlite-fault.test.cjs:12:85\r\n✖ C04: real process termination before-transaction (267.7688ms)\r\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\r\n  + actual - expected\r\n  ... Skipped lines\r\n  \r\n    {\r\n      artifactSnapshot: {\r\n        boxes: [\r\n          {\r\n            entries: [\r\n  ...\r\n        state: 'ACTIVE',\r\n  +     token: undefined,\r\n        tokenSha256: '45cd5cf5eaa1199cfa2428d6bdab1d4300cd5abbdd87d90ab4ba18ca6adf5fb1'\r\n      },\r\n      revision: 5,\r\n      runId: 'run',\r\n      workflowSnapshot: {\r\n  \r\n      at tests\\stage22c-sqlite-fault.test.cjs:22:90\r\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\r\n      at async fixture (tests\\stage22c-sqlite-fault.test.cjs:10:6)\r\n      at async Test.run (node:internal/test_runner/test:1313:7)\r\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {\r\n    generatedMessage: true,\r\n    code: 'ERR_ASSERTION',\r\n    actual: { formatVersion: 'workflow-checkpoint/1', runId: 'run', definition: { id: 'restore-synthetic', version: '1', digest: '47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b' }, workflowSnapshot: { runId: 'run', currentStepNo: 40, status: 'RUNNING', history: [Array] }, artifactSnapshot: { formatVersion: 'artifact-snapshot/1', codecVersion: 'artifact-json/1', boxes: [Array] }, revision: 5, operationIdentifier: 'operation-A', owner: { state: 'ACTIVE', ownerId: 'host-A', token: undefined, fence: 2, expiresAt: 1794792357999, tokenSha256: '45cd5cf5eaa1199cfa2428d6bdab1d4300cd5abbdd87d90ab4ba18ca6adf5fb1' } },\r\n    expected: { formatVersion: 'workflow-checkpoint/1', runId: 'run', definition: { id: 'restore-synthetic', version: '1', digest: '47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b' }, workflowSnapshot: { runId: 'run', currentStepNo: 40, status: 'RUNNING', history: [Array] }, artifactSnapshot: { formatVersion: 'artifact-snapshot/1', codecVersion: 'artifact-json/1', boxes: [Array] }, revision: 5, operationIdentifier: 'operation-A', owner: { state: 'ACTIVE', ownerId: 'host-A', fence: 2, expiresAt: 1794792357999, tokenSha256: '45cd5cf5eaa1199cfa2428d6bdab1d4300cd5abbdd87d90ab4ba18ca6adf5fb1' } },\r\n    operator: 'deepStrictEqual',\r\n    diff: 'simple'\r\n  }\r\n\r\ntest at tests\\stage22c-sqlite-fault.test.cjs:12:85\r\n✖ C04: real process termination updated-before-commit (244.3999ms)\r\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\r\n  + actual - expected\r\n  ... Skipped lines\r\n  \r\n    {\r\n      artifactSnapshot: {\r\n        boxes: [\r\n          {\r\n            entries: [\r\n  ...\r\n        state: 'ACTIVE',\r\n  +     token: undefined,\r\n        tokenSha256: '2b353ae91332209e0eabca6a6af619ebb459eadfb2e7f2ce7c3adcaedbde1922'\r\n      },\r\n      revision: 5,\r\n      runId: 'run',\r\n      workflowSnapshot: {\r\n  \r\n      at tests\\stage22c-sqlite-fault.test.cjs:22:90\r\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\r\n      at async fixture (tests\\stage22c-sqlite-fault.test.cjs:10:6)\r\n      at async Test.run (node:internal/test_runner/test:1313:7)\r\n      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {\r\n    generatedMessage: true,\r\n    code: 'ERR_ASSERTION',\r\n    actual: { formatVersion: 'workflow-checkpoint/1', runId: 'run', definition: { id: 'restore-synthetic', version: '1', digest: '47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b' }, workflowSnapshot: { runId: 'run', currentStepNo: 40, status: 'RUNNING', history: [Array] }, artifactSnapshot: { formatVersion: 'artifact-snapshot/1', codecVersion: 'artifact-json/1', boxes: [Array] }, revision: 5, operationIdentifier: 'operation-A', owner: { state: 'ACTIVE', ownerId: 'host-A', token: undefined, fence: 2, expiresAt: 1794792358253, tokenSha256: '2b353ae91332209e0eabca6a6af619ebb459eadfb2e7f2ce7c3adcaedbde1922' } },\r\n    expected: { formatVersion: 'workflow-checkpoint/1', runId: 'run', definition: { id: 'restore-synthetic', version: '1', digest: '47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b' }, workflowSnapshot: { runId: 'run', currentStepNo: 40, status: 'RUNNING', history: [Array] }, artifactSnapshot: { formatVersion: 'artifact-snapshot/1', codecVersion: 'artifact-json/1', boxes: [Array] }, revision: 5, operationIdentifier: 'operation-A', owner: { state: 'ACTIVE', ownerId: 'host-A', fence: 2, expiresAt: 1794792358253, tokenSha256: '2b353ae91332209e0eabca6a6af619ebb459eadfb2e7f2ce7c3adcaedbde1922' } },\r\n    operator: 'deepStrictEqual',\r\n    diff: 'simple'\r\n  }\r\n\r\ntest at tests\\stage22c-sqlite-fault.test.cjs:12:85\r\n✖ C04: real process termination after-commit (233.8384ms)\r\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\r\n  + actual - expected\r\n  ... Skipped lines\r\n  \r\n    {\r\n      artifactSnapshot: {\r\n        boxes: [\r\n          {\r\n            entries: [\r\n  ...\r\n        state: 'RELEASED',\r\n  +     token: undefined,\r\n        tokenSha256: '875f7dfb02e6e99db9613a3a2322b652f58105ca5324afa5a662c8cdc1f88423'\r\n      },\r\n      revision: 6,\r\n      runId: 'run',\r\n      workflowSnapshot: {\r\n  \r\n      at tests\\stage22c-sqlite-fault.test.cjs:22:34\r\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\r\n      at async fixture (tests\\stage22c-sqlite-fault.test.cjs:10:6)\r\n      at async Test.run (node:internal/test_runner/test:1313:7)\r\n      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {\r\n    generatedMessage: true,\r\n    code: 'ERR_ASSERTION',\r\n    actual: { formatVersion: 'workflow-checkpoint/1', runId: 'run', definition: { id: 'restore-synthetic', version: '1', digest: '47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b' }, workflowSnapshot: { runId: 'run', currentStepNo: null, status: 'COMPLETED', history: [Array] }, artifactSnapshot: { formatVersion: 'artifact-snapshot/1', codecVersion: 'artifact-json/1', boxes: [Array] }, revision: 6, operationIdentifier: 'operation-A', owner: { state: 'RELEASED', ownerId: 'host-A', token: undefined, fence: 2, expiresAt: 1794792298510, tokenSha256: '875f7dfb02e6e99db9613a3a2322b652f58105ca5324afa5a662c8cdc1f88423' } },\r\n    expected: { formatVersion: 'workflow-checkpoint/1', runId: 'run', definition: { id: 'restore-synthetic', version: '1', digest: '47dc2b937ad264a01eeb060fff8b87c93d5c1a20c55658c46897b237449f054b' }, workflowSnapshot: { runId: 'run', currentStepNo: null, status: 'COMPLETED', history: [Array] }, artifactSnapshot: { formatVersion: 'artifact-snapshot/1', codecVersion: 'artifact-json/1', boxes: [Array] }, revision: 6, operationIdentifier: 'operation-A', owner: { state: 'RELEASED', ownerId: 'host-A', fence: 2, expiresAt: 1794792298510, tokenSha256: '875f7dfb02e6e99db9613a3a2322b652f58105ca5324afa5a662c8cdc1f88423' } },\r\n    operator: 'deepStrictEqual',\r\n    diff: 'simple'\r\n  }\r\n"
+    },
+    "final": {
+      "pass": 7,
+      "fail": 0,
+      "skip": 0,
+      "c04": 3,
+      "c07": 4,
+      "logFile": "logs/stage22c2-c04-c07-final.log",
+      "sha256": "fca0fbf3d7d34f8ac5585254058f0070482133409ec9663797206b0b0fa4cc6a"
+    },
+    "overlap": "ケースごとの一時DBは独立。件数は全Frameworkの品質採点ではない。"
+  },
+  "references": [
+    {
+      "path": "tests/stage22c-sqlite-fault.test.cjs",
+      "sha256": "d609d283b6816a408bdfc17a9121b23dd1d36719f67758a8bc69c6c1b5f71079"
+    },
+    {
+      "path": "tests/stage22c-sqlite-fault/child.cjs",
+      "sha256": "edae4804da54d259137022779bd7815589c319567a61cb79165074151356a088"
+    },
+    {
+      "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+      "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a"
+    }
+  ],
+  "runtimeInputs": {
+    "dist/Frwk_Units/Workflow/src/ArtifactManager.js": "885115656b7f380b62f2433cfc78477c45946394a58f7039e187ff7cdc64731b",
+    "dist/Frwk_Units/Workflow/src/ArtifactSnapshot.js": "f88364e64a00ef750e7716ee673052ab0347babb20b674b5cc6e590116c322b6",
+    "dist/Frwk_Units/Workflow/src/CJobForm.js": "019c442c462cae38ab801478262cfbe2918820f4b56740492c1a33a7bfe038fd",
+    "dist/Frwk_Units/Workflow/src/CWorkflow.js": "a888d98ef4ab0e65c7e5c6717a82bc27f700f5b4927912db29ad70dac1b9261a",
+    "dist/Frwk_Units/Workflow/src/Definition.js": "f158275e1db7367a02acb7c7d04226a616fa6b98ff237db54a4896ad0bc705de",
+    "dist/Frwk_Units/Workflow/src/WorkflowBuilder.js": "5370a7695c2889c2f83982db91ecde5e4378d9a11583c37dfe915c06b4222bad",
+    "dist/Frwk_Units/Workflow/src/WorkflowRegistry.js": "d43aa81f5bc89faa359e0f97c814ba25155591ff078fbb9bfd40f8c7c9683230",
+    "dist/src/prototype/workflow.js": "29411184dc72e91fbbc1506fe1f0f353e209e5ddd2104bb57198b19010c581ff",
+    "dist/src/prototype/definition.js": "80d4c17b699f6ba17cc76f118f50efea80db431e18982b23989851ac1211b4b8"
+  },
+  "preservation": {
+    "docs/plans/PHASE-5B-minimal-contract-design.md": {
+      "before": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "after": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264"
+    },
+    "docs/architecture/ARCH-026_CMRP_設計対話整理_2026-11-07.md": {
+      "before": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "after": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff"
+    },
+    "docs/architecture/ARCH-026_Migration_Function_Inventory_20261106.md": {
+      "before": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "after": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd"
+    },
+    "docs/architecture/ARCH-026_Workflow_Function_Check_20261106.md": {
+      "before": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "after": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03"
+    },
+    "docs/architecture/ARCH-026_設計判断履歴_CJobFormとCJobの未定義_2026-11-08.md": {
+      "before": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "after": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz": {
+      "before": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "after": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz.json": {
+      "before": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "after": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz": {
+      "before": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "after": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz.json": {
+      "before": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "after": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz": {
+      "before": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "after": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz.json": {
+      "before": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "after": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz": {
+      "before": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "after": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz.json": {
+      "before": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "after": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz": {
+      "before": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "after": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz.json": {
+      "before": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "after": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz": {
+      "before": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "after": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz.json": {
+      "before": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "after": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz": {
+      "before": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "after": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz.json": {
+      "before": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "after": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz": {
+      "before": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "after": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz.json": {
+      "before": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "after": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz": {
+      "before": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "after": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz.json": {
+      "before": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "after": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz": {
+      "before": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "after": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz.json": {
+      "before": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "after": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz": {
+      "before": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "after": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz.json": {
+      "before": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "after": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz": {
+      "before": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "after": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz.json": {
+      "before": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "after": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz": {
+      "before": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "after": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz.json": {
+      "before": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "after": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz": {
+      "before": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "after": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz.json": {
+      "before": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "after": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz": {
+      "before": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "after": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz.json": {
+      "before": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "after": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a"
+    },
+    "Migration/reports/history/stage22b-artifact-assessment-20261116.json": {
+      "before": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857",
+      "after": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857"
+    },
+    "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md": {
+      "before": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "after": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a"
+    },
+    "Migration/registry.json": {
+      "before": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c",
+      "after": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c"
+    },
+    "Migration/reports/latest.json": {
+      "before": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63",
+      "after": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63"
+    },
+    "Migration/reports/status.md": {
+      "before": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796",
+      "after": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796"
+    },
+    "Migration/reports/history/stage22c2-c02-c06-results-20261116.json": {
+      "before": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9",
+      "after": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9"
+    },
+    "tests/stage22c-ownership-window.test.cjs": {
+      "before": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b",
+      "after": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b"
+    },
+    "Migration/reports/history/stage22c2-c03-results-20261116.json": {
+      "before": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10",
+      "after": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10"
+    },
+    "tests/stage22c-c03-process.test.cjs": {
+      "before": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99",
+      "after": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99"
+    },
+    "tests/stage22c-c03/child.cjs": {
+      "before": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1",
+      "after": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1"
+    }
+  },
+  "changes": [
+    "tests/stage22c-sqlite-fault.test.cjs",
+    "tests/stage22c-sqlite-fault/child.cjs",
+    "Migration/reports/history/stage22c2-c04-c07-results-20261116.json"
+  ],
+  "operations": {
+    "productionCodeChanged": false,
+    "sqliteSchemaChanged": false,
+    "distributionUpdated": false,
+    "migrationApprovalChanged": false,
+    "c05Tested": false,
+    "c10Tested": false,
+    "wholeStageScored": false,
+    "stage": false,
+    "commit": false,
+    "push": false
+  }
+}

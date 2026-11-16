@@ -1,0 +1,618 @@
+{
+  "schemaVersion": 1,
+  "recordType": "stage-closure",
+  "stage": "Stage 2",
+  "recordedAt": "2026-11-16T10:53:59+09:00",
+  "repository": "ARCH-026_Workflow",
+  "branch": "main",
+  "baseCommit": "7d42c0e5be37a0895b17b877c34dabb0e9c7af52",
+  "purpose": "Workflow実行インスタンスごとの全箱Artifact Snapshotを保存・厳密復元し、SQLite Checkpointとclaim/所有権制御によって安全に再開する基盤を整備する。障害・競合時の保証境界を実証して次の開発判断へ渡す。",
+  "decision": {
+    "status": "Stage 2終了",
+    "stage22B": {
+      "score": 93,
+      "maximum": 100,
+      "result": "PASS",
+      "assessment": "Migration/reports/history/stage22b-artifact-assessment-20261116.json"
+    },
+    "stage22C": {
+      "score": 94,
+      "maximum": 100,
+      "result": "PASS",
+      "assessment": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json"
+    },
+    "scope": "Framework実装とローカル障害・競合特性確認の区切りとして終了する。残存Bリスクを解消済みとしない。",
+    "productionDeploymentApproved": false
+  },
+  "milestones": [
+    {
+      "id": "Stage 2-1",
+      "status": "完了",
+      "commit": "b4be36be2cd908836bd76652a9718ee067d25488",
+      "achievement": "全箱Snapshot/Codec・検証・原子的復元Factory。形式/undefined/参照独立性と入力境界の安全性を確認。"
+    },
+    {
+      "id": "Stage 2-2A",
+      "status": "完了",
+      "commit": "3d2fd266d4f3e8e6c589acd1cde7e19a8a7782d9",
+      "achievement": "既存SQLite保存TransactionへWorkflow/Artifact Snapshotと操作・Revision・ownerの一貫したCheckpointを統合。整合性検証を修正。"
+    },
+    {
+      "id": "Stage 2-2B",
+      "status": "完了・93点PASS",
+      "commit": "7d42c0e5be37a0895b17b877c34dabb0e9c7af52",
+      "achievement": "Definition厳密照合・未結合復元・正規claim後のrunId結合・Job/Check実行前の所有権検証・別プロセス再開。"
+    },
+    {
+      "id": "Stage 2-2C",
+      "status": "計画・追加シナリオ検証・94点PASSの評価完了",
+      "commit": "本終了記録を含むGit登録で確定する。自己Commit IDは本文へ後付けせずGit履歴で特定する。",
+      "achievement": "C01/C08/C09の既存証拠を再利用し、C02/C03/C06のLIMITATION、C04/C07/C05/C10の確認範囲PASSを記録。"
+    }
+  ],
+  "verifiedGuarantees": [
+    "単一Workflow実行に属する全箱・空箱・明示undefinedと参照独立性を持つSnapshotの生成・検証・復元。",
+    "Definition ID/Version/既存Digestと箱宣言を照合し、不一致を自動補修せず拒否する。",
+    "Workflow/Artifact/Revision/操作/ownerを同じSQLite Checkpoint Transactionで更新。確認した保存開始前・更新後COMMIT前・COMMIT後の実終了では、旧/新の完全状態のみが正常受理された。",
+    "正規同時claimは単一所有権を適用。同一操作再送は未確定なら拒否、確定済みなら読取専用receiptでJobを二重実行しない。",
+    "所有権検証時に拒否/判定不能を検出した処理をJob/Checkへ進めず、SQLite現在row・時刻を照合。失効したHostの保存を拒否する。",
+    "WAITING/LIMIT_REACHEDは明示操作と全照合の下で再開。RUNNING/FAILEDの自動復旧とCOMPLETEDへの新規実行は行わない。",
+    "接続障害/実ロック時にUNKNOWNを維持し、Memoryへ暗黙切替しない。保存前の業務副作用をRollback済みとは扱わない。"
+  ],
+  "residualBRisks": [
+    {
+      "risk": "Job実行中の失効・検証後の競合窓",
+      "status": "C02/C06 LIMITATION。点時検証の後や開始済みJobを原子的に保護するものではない。",
+      "handoff": "外部受付のfencing/業務冪等性、期限内更新要件を業務Workflow試作で判断。"
+    },
+    {
+      "risk": "外部副作用とCheckpoint保存の非原子性",
+      "status": "C03では独立副作用成功後にWorkflow RUNNINGが残る。",
+      "handoff": "安定した業務操作ID・外部結果照会・再処理可否を具体化。"
+    },
+    {
+      "risk": "RUNNING/FAILED/UNKNOWNの手動復旧未整備",
+      "status": "拒否による安全停止は確認したが、正式な完了補正・強制回復は未提供。",
+      "handoff": "承認/監査を含む確認・補正手順を設計。DB直接書換えを既成機能としない。"
+    },
+    {
+      "risk": "SQLite内部COMMIT途中・電源断・媒体故障",
+      "status": "本検証のプロセス終了3境界・接続/ロックと区別し未検証。",
+      "handoff": "対象業務が必要とする耐障害水準とバックアップ/復旧方針を決める。"
+    },
+    {
+      "risk": "実時間長期保管・全競合順序/高負荷",
+      "status": "30日前への整合的時刻模擬と固定barrier競合まで。",
+      "handoff": "実際の運用期間・負荷に必要な追加保証を選定。"
+    }
+  ],
+  "productionLimit": "本記録は本番導入を承認しない。非冪等な業務副作用を、外部照会/冪等性/fencingや回復運用なしに接続する判断は別の進行ゲートで止める。",
+  "nextPhase": {
+    "policy": "実際の業務Workflowを試作し、必要な機能・保証を検証する。Frameworkを理論上拡張すること自体を次工程の目的にしない。",
+    "firstDecisions": [
+      "試作する実業務の対象・Job/Check/WAITING境界・成功と取消しの意味を利用者と決める。",
+      "業務操作ID、外部結果照会、冪等性/fencing、権限と手動復旧を具体的な業務に照らして判断する。",
+      "業務試作で不足を実証した機能だけを次の実装候補にする。"
+    ],
+    "notStarted": true,
+    "notAuthorizedByThisRecord": [
+      "次Stageの実装",
+      "本番/DEV接続・Deploy",
+      "Schema変更",
+      "Migration COMPLETE承認"
+    ]
+  },
+  "evidenceAndRegistration": {
+    "existingArtifacts": [
+      {
+        "path": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "sha256": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857"
+      },
+      {
+        "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+        "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a"
+      },
+      {
+        "path": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "sha256": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9"
+      },
+      {
+        "path": "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "sha256": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10"
+      },
+      {
+        "path": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "sha256": "85ff5a36ca9bf2743897c805d9b8416a9c3a0142779644d83ae9870fed1bd63a"
+      },
+      {
+        "path": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "sha256": "e9d45f46a31be69ff3938a2bab1048b174db2f5511e8cb45881686b9ccc4e35f"
+      },
+      {
+        "path": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "sha256": "14974f521252b126feb30da07801859729ca3c28dc9c69f91819a9f059745e7f"
+      },
+      {
+        "path": "tests/stage22c-ownership-window.test.cjs",
+        "sha256": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b"
+      },
+      {
+        "path": "tests/stage22c-c03-process.test.cjs",
+        "sha256": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99"
+      },
+      {
+        "path": "tests/stage22c-c03/child.cjs",
+        "sha256": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1"
+      },
+      {
+        "path": "tests/stage22c-sqlite-fault.test.cjs",
+        "sha256": "d609d283b6816a408bdfc17a9121b23dd1d36719f67758a8bc69c6c1b5f71079"
+      },
+      {
+        "path": "tests/stage22c-sqlite-fault/child.cjs",
+        "sha256": "edae4804da54d259137022779bd7815589c319567a61cb79165074151356a088"
+      },
+      {
+        "path": "tests/stage22c-claim-states.test.cjs",
+        "sha256": "eaefcd7a67dcb4609bfb93ba68126332b082c081dee739c5e846f1475ab87150"
+      },
+      {
+        "path": "tests/stage22c-claim-states/child.cjs",
+        "sha256": "b32590bcfd51b6f715b3b3ae98fa269b26be7978c64d95b52f3e6fda1ef98737"
+      }
+    ],
+    "closureFile": "Migration/reports/history/stage2-closure-20261116.json",
+    "totalFilesIncludingClosure": 15,
+    "referenceChecks": [
+      {
+        "from": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/artifact-resume-stage22b-validation.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/execution-ownership-fix-validation.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "to": "Migration/reports/latest.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "to": "Migration/reports/status.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "to": "Migration/registry.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "to": "Frwk_Units/Workflow/docs/README.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "to": "Migration/README.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "to": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "to": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "to": "tests/stage22c-ownership-window.test.cjs",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "to": "logs/stage22c2-c02-c06-final.log",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "to": "tests/stage22c-c03-process.test.cjs",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "to": "tests/stage22c-c03/child.cjs",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "to": "logs/stage22c2-c03.log",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "to": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "to": "tests/stage22c-sqlite-fault.test.cjs",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "to": "tests/stage22c-sqlite-fault/child.cjs",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "to": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "to": "tests/stage22c-claim-states.test.cjs",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "to": "tests/stage22c-claim-states/child.cjs",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "to": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "to": "Migration/reports/history/execution-ownership-fix-validation.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/execution-ownership-fix-validation.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "status": "HISTORICAL_SHA_RESOLVED_BY_PATH_REDACTION"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/latest.json",
+        "status": "EXACT"
+      },
+      {
+        "from": "Migration/reports/history/stage22c3-artifact-assessment-20261116.json",
+        "to": "Migration/reports/status.md",
+        "status": "EXACT"
+      }
+    ],
+    "historyRule": "過去評価時の参照SHA・preservationは当時の値として保持。C04の不要ローカルroot相対化で現在SHAが変わった箇所は下記auditで解決し、試験結果や過去評価を書き換えない。",
+    "pathRedactionAudit": {
+      "path": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+      "field": "testExecution.firstRun.failureLog",
+      "originalFileSha256": "800f8af2e2f70f6695394942416d91162757341e4f0d6488347757381e1952bb",
+      "registeredFileSha256": "85ff5a36ca9bf2743897c805d9b8416a9c3a0142779644d83ae9870fed1bd63a",
+      "replacements": 6,
+      "transformation": "Removed local repository-root prefix from six historical stack frames; retained repository-relative file/line locations. No test results, counts, scores, observations, or historical reference hashes rewritten.",
+      "payloadExcludingRedactedFieldSha256": "13af350b307a5f2d6749418a2ae9ccd4d872fc6f93e74a316b1838e7b5c03347",
+      "originalEmbeddedLogSha256": "6243238ccdc6e07c93ec3ed9416851e9b5e630a0f9a53c922c4b38a3584eb014",
+      "registeredEmbeddedLogSha256": "a73e3c43501d72b4b3490e08783537ccdf10c3659c93d4613e09122fcab6e553",
+      "originalRawLogPath": "logs/stage22c2-c04-c07.log",
+      "originalRawLogSha256": "6243238ccdc6e07c93ec3ed9416851e9b5e630a0f9a53c922c4b38a3584eb014"
+    },
+    "rawLogs": "logs/は既存.gitignoreにより対象外。今回ignore規則は変えず、既存のSHA参照と記録内の主要観測値を保持する。全生ログがGit内にあるとは扱わない。"
+  },
+  "preservation": {
+    "docs/plans/PHASE-5B-minimal-contract-design.md": {
+      "before": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "after": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "status": "UNCHANGED"
+    },
+    "docs/architecture/ARCH-026_CMRP_設計対話整理_2026-11-07.md": {
+      "before": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "after": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "status": "UNCHANGED"
+    },
+    "docs/architecture/ARCH-026_Migration_Function_Inventory_20261106.md": {
+      "before": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "after": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "status": "UNCHANGED"
+    },
+    "docs/architecture/ARCH-026_Workflow_Function_Check_20261106.md": {
+      "before": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "after": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "status": "UNCHANGED"
+    },
+    "docs/architecture/ARCH-026_設計判断履歴_CJobFormとCJobの未定義_2026-11-08.md": {
+      "before": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "after": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz": {
+      "before": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "after": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz.json": {
+      "before": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "after": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz": {
+      "before": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "after": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz.json": {
+      "before": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "after": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz": {
+      "before": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "after": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz.json": {
+      "before": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "after": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz": {
+      "before": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "after": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz.json": {
+      "before": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "after": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz": {
+      "before": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "after": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz.json": {
+      "before": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "after": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz": {
+      "before": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "after": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz.json": {
+      "before": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "after": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz": {
+      "before": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "after": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz.json": {
+      "before": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "after": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz": {
+      "before": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "after": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz.json": {
+      "before": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "after": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz": {
+      "before": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "after": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz.json": {
+      "before": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "after": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz": {
+      "before": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "after": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz.json": {
+      "before": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "after": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz": {
+      "before": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "after": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz.json": {
+      "before": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "after": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz": {
+      "before": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "after": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz.json": {
+      "before": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "after": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz": {
+      "before": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "after": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz.json": {
+      "before": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "after": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz": {
+      "before": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "after": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz.json": {
+      "before": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "after": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz": {
+      "before": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "after": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "status": "UNCHANGED"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz.json": {
+      "before": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "after": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/history/stage22b-artifact-assessment-20261116.json": {
+      "before": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857",
+      "after": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md": {
+      "before": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "after": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "status": "UNCHANGED"
+    },
+    "Migration/registry.json": {
+      "before": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c",
+      "after": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/latest.json": {
+      "before": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63",
+      "after": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/status.md": {
+      "before": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796",
+      "after": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/history/stage22c2-c02-c06-results-20261116.json": {
+      "before": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9",
+      "after": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9",
+      "status": "UNCHANGED"
+    },
+    "tests/stage22c-ownership-window.test.cjs": {
+      "before": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b",
+      "after": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/history/stage22c2-c03-results-20261116.json": {
+      "before": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10",
+      "after": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10",
+      "status": "UNCHANGED"
+    },
+    "tests/stage22c-c03-process.test.cjs": {
+      "before": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99",
+      "after": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99",
+      "status": "UNCHANGED"
+    },
+    "tests/stage22c-c03/child.cjs": {
+      "before": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1",
+      "after": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/history/stage22c2-c04-c07-results-20261116.json": {
+      "before": "800f8af2e2f70f6695394942416d91162757341e4f0d6488347757381e1952bb",
+      "after": "85ff5a36ca9bf2743897c805d9b8416a9c3a0142779644d83ae9870fed1bd63a",
+      "status": "AUTHORIZED_RECORD_PATH_REDACTION_ONLY"
+    },
+    "tests/stage22c-sqlite-fault.test.cjs": {
+      "before": "d609d283b6816a408bdfc17a9121b23dd1d36719f67758a8bc69c6c1b5f71079",
+      "after": "d609d283b6816a408bdfc17a9121b23dd1d36719f67758a8bc69c6c1b5f71079",
+      "status": "UNCHANGED"
+    },
+    "tests/stage22c-sqlite-fault/child.cjs": {
+      "before": "edae4804da54d259137022779bd7815589c319567a61cb79165074151356a088",
+      "after": "edae4804da54d259137022779bd7815589c319567a61cb79165074151356a088",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/history/stage22c2-c05-c10-results-20261116.json": {
+      "before": "e9d45f46a31be69ff3938a2bab1048b174db2f5511e8cb45881686b9ccc4e35f",
+      "after": "e9d45f46a31be69ff3938a2bab1048b174db2f5511e8cb45881686b9ccc4e35f",
+      "status": "UNCHANGED"
+    },
+    "tests/stage22c-claim-states.test.cjs": {
+      "before": "eaefcd7a67dcb4609bfb93ba68126332b082c081dee739c5e846f1475ab87150",
+      "after": "eaefcd7a67dcb4609bfb93ba68126332b082c081dee739c5e846f1475ab87150",
+      "status": "UNCHANGED"
+    },
+    "tests/stage22c-claim-states/child.cjs": {
+      "before": "b32590bcfd51b6f715b3b3ae98fa269b26be7978c64d95b52f3e6fda1ef98737",
+      "after": "b32590bcfd51b6f715b3b3ae98fa269b26be7978c64d95b52f3e6fda1ef98737",
+      "status": "UNCHANGED"
+    },
+    "Migration/reports/history/stage22c3-artifact-assessment-20261116.json": {
+      "before": "14974f521252b126feb30da07801859729ca3c28dc9c69f91819a9f059745e7f",
+      "after": "14974f521252b126feb30da07801859729ca3c28dc9c69f91819a9f059745e7f",
+      "status": "UNCHANGED"
+    }
+  },
+  "migration": {
+    "registered": 37,
+    "completeApprovals": 0,
+    "registryChanged": false,
+    "evidenceReverified": false,
+    "policyChanged": false
+  },
+  "closingOperations": {
+    "newTestsRun": false,
+    "implementationChanged": false,
+    "frameworkDesignChanged": false,
+    "productSchemaChanged": false,
+    "distributionChanged": false,
+    "gitignoreChanged": false,
+    "heldDocumentsRegistered": false,
+    "scope": "成果物整理・登録と終了記録のみ。既存テストは実行せず、静的なJSON/参照/ハッシュ/差分確認だけを実施。"
+  }
+}

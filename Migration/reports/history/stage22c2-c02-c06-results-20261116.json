@@ -1,0 +1,1083 @@
+{
+  "schemaVersion": 1,
+  "recordType": "focused-fault-characterization",
+  "stage": "Stage 2-2C-2 C02/C06のみ",
+  "recordedAt": "2026-11-16T09:32:54+09:00",
+  "targetCommit": "7d42c0e5be37a0895b17b877c34dabb0e9c7af52",
+  "branch": "main",
+  "purpose": "製品コードを変えずに現在の保証範囲と残存リスクを確認する。改善実装やStage 2-2C全体採点ではない。",
+  "method": {
+    "command": "node --test tests/stage22c-ownership-window.test.cjs",
+    "environment": {
+      "node": "v24.16.0",
+      "platform": "win32",
+      "arch": "x64",
+      "sqlite": "3.53.0"
+    },
+    "processes": "同一Nodeプロセス内の独立Host資格・独立SQLite接続。別OSプロセスの新規試験ではない。",
+    "runtimeInputs": {
+      "count": 9,
+      "matchExistingEvidence": true,
+      "sha256": {
+        "dist/Frwk_Units/Workflow/src/ArtifactManager.js": "885115656b7f380b62f2433cfc78477c45946394a58f7039e187ff7cdc64731b",
+        "dist/Frwk_Units/Workflow/src/ArtifactSnapshot.js": "f88364e64a00ef750e7716ee673052ab0347babb20b674b5cc6e590116c322b6",
+        "dist/Frwk_Units/Workflow/src/CJobForm.js": "019c442c462cae38ab801478262cfbe2918820f4b56740492c1a33a7bfe038fd",
+        "dist/Frwk_Units/Workflow/src/CWorkflow.js": "a888d98ef4ab0e65c7e5c6717a82bc27f700f5b4927912db29ad70dac1b9261a",
+        "dist/Frwk_Units/Workflow/src/Definition.js": "f158275e1db7367a02acb7c7d04226a616fa6b98ff237db54a4896ad0bc705de",
+        "dist/Frwk_Units/Workflow/src/WorkflowBuilder.js": "5370a7695c2889c2f83982db91ecde5e4378d9a11583c37dfe915c06b4222bad",
+        "dist/Frwk_Units/Workflow/src/WorkflowRegistry.js": "d43aa81f5bc89faa359e0f97c814ba25155591ff078fbb9bfd40f8c7c9683230",
+        "dist/src/prototype/workflow.js": "29411184dc72e91fbbc1506fe1f0f353e209e5ddd2104bb57198b19010c581ff",
+        "dist/src/prototype/definition.js": "80d4c17b699f6ba17cc76f118f50efea80db431e18982b23989851ac1211b4b8"
+      }
+    },
+    "buildExecuted": false,
+    "expiry": "一時SQLiteのowner.expiresAtだけをSQLite時刻-1へ故障注入。owner ID/token/fence/Revision/操作IDは変えない。実時間の長期経過試験ではない。",
+    "synchronization": "C02はJob.collect内のPromise barrier。C06は本物の最終assertCanExecuteStep成功後、同Portの成功応答をfixtureのPromise barrierで保留する。検証結果を捏造せず、同期点後に失効させて応答を戻す。既存のPromise対応Portが持つ競合窓を拡大して観測。",
+    "sideEffect": "Workflow DBとは別の一時JSONL台帳。実サービスへ接続せず、冪等性やfencingによる抑止を持たない合成受理カウンター。",
+    "cleanup": "対象を検証した一時ディレクトリだけ削除。待機Promiseを解放し、開始した実行の終了と接続closeを確認。"
+  },
+  "steps": {
+    "C02": [
+      "LIMIT_REACHED境界を用意し、Host Aがoperation-Aで正規claim。",
+      "最終所有権検証成功後、Job開始・collect内部到達をbarrierで確認。",
+      "expiresAtだけを過去へ変更し、独立接続Host Bがoperation-Bで正規claimを試みる。",
+      "Host AのJobを続行し、Job完了・副作用・Memory公開・保存結果を別々に観測。",
+      "同一operation-AをHost Bから再要求し、副作用増分とCheckpointの非変更を確認。"
+    ],
+    "C06": [
+      "Host Aが正規claim。訪問Factory前とJob直前の実検証が成功する。",
+      "Job直前の2回目検証応答を保留し、Job開始件数0を確認。",
+      "expiresAtだけを過去にし、Host Bが正規claimを試みる。",
+      "成功済みの検証応答を戻してJob開始時のDB lease状態と実行・副作用・保存を観測。",
+      "同一operation-A再要求の結果と副作用増分を確認。"
+    ]
+  },
+  "observations": [
+    {
+      "scenario": "C02",
+      "result": "LIMITATION",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64",
+        "sqlite": "3.53.0"
+      },
+      "scope": "One Node process, separate SQLite connections and Host capabilities; no real service and no successful ownership replacement.",
+      "expiryMethod": "Temporary SQLite expiresAt set to DB-time minus 1 after an acknowledged barrier; no sleep, Date.now override, token/fence/Revision rewrite or production code change.",
+      "guardInspections": 2,
+      "jobCounts": {
+        "A": {
+          "started": 1,
+          "completed": 1,
+          "effects": 1
+        },
+        "B": {
+          "started": 0,
+          "completed": 0,
+          "effects": 0
+        }
+      },
+      "externalEffectCount": 1,
+      "hostBClaim": {
+        "result": "PASS",
+        "error": {
+          "code": "CLAIM_BUSY"
+        },
+        "meaning": "Expired ACTIVE/RUNNING is not claimable; no takeover."
+      },
+      "afterSuccessfulHostBTakeover": {
+        "result": "INCONCLUSIVE",
+        "reason": "Normal protocol refused Host B; successful replacement was not forced or observed."
+      },
+      "hostAJobResult": "COMPLETED",
+      "workflowResult": {
+        "ok": false,
+        "error": {
+          "code": "HISTORY_SAVE_OUTCOME_UNKNOWN",
+          "causeCode": "LEASE_EXPIRED",
+          "storageCode": "LEASE_EXPIRED",
+          "outcome": "UNKNOWN",
+          "attemptedStatus": "COMPLETED"
+        }
+      },
+      "checkpointSave": {
+        "result": "PASS",
+        "accepted": false,
+        "reason": "LEASE_EXPIRED",
+        "rowUnchangedAfterExpiry": true
+      },
+      "duplicateReplay": {
+        "result": "PASS",
+        "error": {
+          "code": "OPERATION_IN_PROGRESS"
+        },
+        "extraEffects": 0
+      },
+      "beforeExpiry": {
+        "revision": 5,
+        "snapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T00:31:06.446Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794789126469,
+          "tokenSha256": "a76478c26bcd8226f8180a8f2d09317fe04e2b13497eceb12d56e87d550cd7cc"
+        },
+        "operations": [
+          {
+            "operationId": "start",
+            "kind": "START",
+            "status": "FINISHED",
+            "revision": 3
+          },
+          {
+            "operationId": "operation-A",
+            "kind": "RESUME_LIMIT",
+            "status": "RUNNING"
+          }
+        ]
+      },
+      "afterExpiry": {
+        "revision": 5,
+        "snapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T00:31:06.446Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794789066490,
+          "tokenSha256": "a76478c26bcd8226f8180a8f2d09317fe04e2b13497eceb12d56e87d550cd7cc"
+        },
+        "operations": [
+          {
+            "operationId": "start",
+            "kind": "START",
+            "status": "FINISHED",
+            "revision": 3
+          },
+          {
+            "operationId": "operation-A",
+            "kind": "RESUME_LIMIT",
+            "status": "RUNNING"
+          }
+        ]
+      },
+      "finalCheckpoint": {
+        "revision": 5,
+        "snapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T00:31:06.446Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794789066490,
+          "tokenSha256": "a76478c26bcd8226f8180a8f2d09317fe04e2b13497eceb12d56e87d550cd7cc"
+        },
+        "operations": [
+          {
+            "operationId": "start",
+            "kind": "START",
+            "status": "FINISHED",
+            "revision": 3
+          },
+          {
+            "operationId": "operation-A",
+            "kind": "RESUME_LIMIT",
+            "status": "RUNNING"
+          }
+        ]
+      },
+      "memoryArtifactPresent": true,
+      "persistedArtifactPresent": false,
+      "effects": [
+        {
+          "host": "A",
+          "runId": "run",
+          "stepNo": 40,
+          "scenario": "C02",
+          "operationIdentifier": "operation-A",
+          "fence": 2,
+          "leaseExpiredAtEffect": true
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "A_RESUME_REQUESTED",
+          "sqliteTime": 1794789066467
+        },
+        {
+          "sequence": 2,
+          "kind": "A_OWNERSHIP_VERIFIED",
+          "sqliteTime": 1794789066483,
+          "inspection": 1,
+          "stepNo": 40
+        },
+        {
+          "sequence": 3,
+          "kind": "A_OWNERSHIP_VERIFIED",
+          "sqliteTime": 1794789066489,
+          "inspection": 2,
+          "stepNo": 40
+        },
+        {
+          "sequence": 4,
+          "kind": "A_JOB_STARTED",
+          "sqliteTime": 1794789066489,
+          "leaseValidAtObservedStart": true
+        },
+        {
+          "sequence": 5,
+          "kind": "JOB_INTERNAL_BARRIER",
+          "sqliteTime": 1794789066489
+        },
+        {
+          "sequence": 6,
+          "kind": "LEASE_EXPIRY_INJECTED",
+          "sqliteTime": 1794789066491
+        },
+        {
+          "sequence": 7,
+          "kind": "B_CLAIM_RESULT",
+          "sqliteTime": 1794789066499,
+          "code": "CLAIM_BUSY"
+        },
+        {
+          "sequence": 8,
+          "kind": "A_EXTERNAL_SYNTHETIC_EFFECT",
+          "sqliteTime": 1794789066501
+        },
+        {
+          "sequence": 9,
+          "kind": "A_ARTIFACT_PUBLISHED",
+          "sqliteTime": 1794789066501
+        },
+        {
+          "sequence": 10,
+          "kind": "A_JOB_COMPLETED",
+          "sqliteTime": 1794789066501
+        },
+        {
+          "sequence": 11,
+          "kind": "A_WORKFLOW_RESULT",
+          "sqliteTime": 1794789066505,
+          "ok": false,
+          "error": {
+            "code": "HISTORY_SAVE_OUTCOME_UNKNOWN",
+            "causeCode": "LEASE_EXPIRED",
+            "storageCode": "LEASE_EXPIRED",
+            "outcome": "UNKNOWN",
+            "attemptedStatus": "COMPLETED"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "C06",
+      "result": "LIMITATION",
+      "environment": {
+        "node": "v24.16.0",
+        "platform": "win32",
+        "arch": "x64",
+        "sqlite": "3.53.0"
+      },
+      "scope": "One Node process, separate SQLite connections and Host capabilities; no real service and no successful ownership replacement.",
+      "expiryMethod": "Temporary SQLite expiresAt set to DB-time minus 1 after an acknowledged barrier; no sleep, Date.now override, token/fence/Revision rewrite or production code change.",
+      "guardInspections": 2,
+      "jobCounts": {
+        "A": {
+          "started": 1,
+          "completed": 1,
+          "effects": 1
+        },
+        "B": {
+          "started": 0,
+          "completed": 0,
+          "effects": 0
+        }
+      },
+      "externalEffectCount": 1,
+      "hostBClaim": {
+        "result": "PASS",
+        "error": {
+          "code": "CLAIM_BUSY"
+        },
+        "meaning": "Expired ACTIVE/RUNNING is not claimable; no takeover."
+      },
+      "afterSuccessfulHostBTakeover": {
+        "result": "INCONCLUSIVE",
+        "reason": "Normal protocol refused Host B; successful replacement was not forced or observed."
+      },
+      "hostAJobResult": "COMPLETED",
+      "workflowResult": {
+        "ok": false,
+        "error": {
+          "code": "HISTORY_SAVE_OUTCOME_UNKNOWN",
+          "causeCode": "LEASE_EXPIRED",
+          "storageCode": "LEASE_EXPIRED",
+          "outcome": "UNKNOWN",
+          "attemptedStatus": "COMPLETED"
+        }
+      },
+      "checkpointSave": {
+        "result": "PASS",
+        "accepted": false,
+        "reason": "LEASE_EXPIRED",
+        "rowUnchangedAfterExpiry": true
+      },
+      "duplicateReplay": {
+        "result": "PASS",
+        "error": {
+          "code": "OPERATION_IN_PROGRESS"
+        },
+        "extraEffects": 0
+      },
+      "beforeExpiry": {
+        "revision": 5,
+        "snapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T00:31:06.542Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794789126562,
+          "tokenSha256": "e5b38d6487a0d98bca809d219c92f4fbb1f0ffc9da79c1bd25dcfb712873a49c"
+        },
+        "operations": [
+          {
+            "operationId": "start",
+            "kind": "START",
+            "status": "FINISHED",
+            "revision": 3
+          },
+          {
+            "operationId": "operation-A",
+            "kind": "RESUME_LIMIT",
+            "status": "RUNNING"
+          }
+        ]
+      },
+      "afterExpiry": {
+        "revision": 5,
+        "snapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T00:31:06.542Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794789066575,
+          "tokenSha256": "e5b38d6487a0d98bca809d219c92f4fbb1f0ffc9da79c1bd25dcfb712873a49c"
+        },
+        "operations": [
+          {
+            "operationId": "start",
+            "kind": "START",
+            "status": "FINISHED",
+            "revision": 3
+          },
+          {
+            "operationId": "operation-A",
+            "kind": "RESUME_LIMIT",
+            "status": "RUNNING"
+          }
+        ]
+      },
+      "finalCheckpoint": {
+        "revision": 5,
+        "snapshot": {
+          "runId": "run",
+          "currentStepNo": 40,
+          "status": "RUNNING",
+          "history": [
+            {
+              "order": 1,
+              "stepNo": 10,
+              "job": "producer",
+              "result": "DONE",
+              "nextStepNo": 40,
+              "at": "2026-11-16T00:31:06.542Z"
+            }
+          ]
+        },
+        "artifactSnapshot": {
+          "formatVersion": "artifact-snapshot/1",
+          "codecVersion": "artifact-json/1",
+          "boxes": [
+            {
+              "name": "default",
+              "entries": [
+                {
+                  "key": "U",
+                  "encodedValue": {
+                    "type": "undefined"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "empty",
+              "entries": []
+            },
+            {
+              "name": "review",
+              "entries": [
+                {
+                  "key": "X",
+                  "encodedValue": {
+                    "type": "object",
+                    "value": [
+                      {
+                        "key": "n",
+                        "value": {
+                          "type": "number",
+                          "value": 7
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "operationIdentifier": "operation-A",
+        "owner": {
+          "state": "ACTIVE",
+          "ownerId": "host-A",
+          "fence": 2,
+          "expiresAt": 1794789066575,
+          "tokenSha256": "e5b38d6487a0d98bca809d219c92f4fbb1f0ffc9da79c1bd25dcfb712873a49c"
+        },
+        "operations": [
+          {
+            "operationId": "start",
+            "kind": "START",
+            "status": "FINISHED",
+            "revision": 3
+          },
+          {
+            "operationId": "operation-A",
+            "kind": "RESUME_LIMIT",
+            "status": "RUNNING"
+          }
+        ]
+      },
+      "memoryArtifactPresent": true,
+      "persistedArtifactPresent": false,
+      "effects": [
+        {
+          "host": "A",
+          "runId": "run",
+          "stepNo": 40,
+          "scenario": "C06",
+          "operationIdentifier": "operation-A",
+          "fence": 2,
+          "leaseExpiredAtEffect": true
+        }
+      ],
+      "events": [
+        {
+          "sequence": 1,
+          "kind": "A_RESUME_REQUESTED",
+          "sqliteTime": 1794789066559
+        },
+        {
+          "sequence": 2,
+          "kind": "A_OWNERSHIP_VERIFIED",
+          "sqliteTime": 1794789066562,
+          "inspection": 1,
+          "stepNo": 40
+        },
+        {
+          "sequence": 3,
+          "kind": "A_OWNERSHIP_VERIFIED",
+          "sqliteTime": 1794789066576,
+          "inspection": 2,
+          "stepNo": 40
+        },
+        {
+          "sequence": 4,
+          "kind": "FINAL_VERIFICATION_RESPONSE_BARRIER",
+          "sqliteTime": 1794789066576
+        },
+        {
+          "sequence": 5,
+          "kind": "LEASE_EXPIRY_INJECTED",
+          "sqliteTime": 1794789066577
+        },
+        {
+          "sequence": 6,
+          "kind": "B_CLAIM_RESULT",
+          "sqliteTime": 1794789066584,
+          "code": "CLAIM_BUSY"
+        },
+        {
+          "sequence": 7,
+          "kind": "A_JOB_STARTED",
+          "sqliteTime": 1794789066586,
+          "leaseValidAtObservedStart": false
+        },
+        {
+          "sequence": 8,
+          "kind": "A_EXTERNAL_SYNTHETIC_EFFECT",
+          "sqliteTime": 1794789066586
+        },
+        {
+          "sequence": 9,
+          "kind": "A_ARTIFACT_PUBLISHED",
+          "sqliteTime": 1794789066586
+        },
+        {
+          "sequence": 10,
+          "kind": "A_JOB_COMPLETED",
+          "sqliteTime": 1794789066586
+        },
+        {
+          "sequence": 11,
+          "kind": "A_WORKFLOW_RESULT",
+          "sqliteTime": 1794789066590,
+          "ok": false,
+          "error": {
+            "code": "HISTORY_SAVE_OUTCOME_UNKNOWN",
+            "causeCode": "LEASE_EXPIRED",
+            "storageCode": "LEASE_EXPIRED",
+            "outcome": "UNKNOWN",
+            "attemptedStatus": "COMPLETED"
+          }
+        }
+      ]
+    }
+  ],
+  "classifications": {
+    "testSuite": {
+      "pass": 2,
+      "fail": 0,
+      "skip": 0,
+      "note": "既知のLIMITATIONを正確に観測するcharacterization testがPASSした。所有権が実行中も保証されたという意味ではない。"
+    },
+    "scenarios": [
+      {
+        "id": "C02",
+        "result": "LIMITATION",
+        "riskBefore": "B",
+        "riskAfter": "B",
+        "reason": "有効leaseで開始済みJobは失効後も完了し、副作用1回が受理された。一方、Host BはCLAIM_BUSY、旧Host保存はLEASE_EXPIRED、再要求はIN_PROGRESSで副作用増分0。失効時の実行中Job取消し・外部副作用の原子保護は現契約外。"
+      },
+      {
+        "id": "C06",
+        "result": "LIMITATION",
+        "riskBefore": "B",
+        "riskAfter": "B",
+        "reason": "最終検証に成功しても、その応答後の実行開始時にはleaseが失効し得ることを実測した。Job1回・副作用1回。Host Bは取得できず、保存拒否と再送防止は機能。検証成功と実行時所有権の同一視はできない。"
+      }
+    ],
+    "defenses": "Host B takeover拒否、Host A保存拒否、同一操作の二重起動防止、失効後Checkpoint非進行は両ケースPASS。",
+    "inconclusive": "Host Bのclaim成功後に旧Host Aが継続するケースは、正規経路がACTIVE/RUNNING取得を拒否したため未成立。成功を捏造するowner/fence書換えは実施していない。",
+    "escalation": "本試行は両ケース独立に副作用1回・B実行0・再送追加0であり、重大な重複副作用や複数Hostの正規claim成功は実証していないためAへ昇格しない。将来の非冪等業務で再送・手動回復等により重複が成立する場合、その利用条件の適用を止めA対応を検討する。"
+  },
+  "guaranteesAndLimits": [
+    "Revisionは両ケースともclaim後の5から進まない。期限故障注入後のrow全体は保存拒否・再要求で変化しない。",
+    "JobはCOMPLETEDだがWorkflowはHISTORY_SAVE_OUTCOME_UNKNOWN。保存済みSnapshot・操作はRUNNINGのまま。成功や未実行へ読み替えない。",
+    "MemoryにRESULTが公開されても、保存済みArtifact SnapshotにRESULTは存在しない。外部副作用やMemory公開をDB保存成功の根拠にしない。",
+    "Host Bがclaimできる候補は、現在実装では解放済みWAITING/LIMIT_REACHEDと全照合を満たす場合。本試験のACTIVE/RUNNING＋期限切れだけでは取得できない。解放済みケースの追加検証は今回行っていない。",
+    "外部再送、強制的な手動回復、別OSプロセスでの同じ競合窓、後続Jobを配置した別フローは今回新規検証していない。無条件の二重副作用防止保証にはしない。"
+  ],
+  "minimalOptions": [
+    {
+      "topic": "Job冪等性・operation ID",
+      "proposal": "業務操作ごとの安定した冪等キーを外部受付・照会へ渡す。Workflow再開操作IDだけでは別IDでの手動再送を抑止できない場合があるため、業務操作ID/工程訪問との対応を先に決める。既存ExecutionContextへの新規項目追加はしていない。"
+    },
+    {
+      "topic": "外部fencing token",
+      "proposal": "外部更新先が最新fenceを検証してstale更新を拒否できる契約を検討する。SQLite保存時fencingが外部サービスにも適用されるとはみなさない。"
+    },
+    {
+      "topic": "lease更新",
+      "proposal": "必要なら有効期限内の明示heartbeatと上限を検討する。既に失効したleaseの無断再取得や、単なる長期化で競合窓が消えるという扱いは禁止。同期長時間Jobでは更新の実行手段も要検討。"
+    },
+    {
+      "topic": "再開前の確認・手動復旧",
+      "proposal": "RUNNING/UNKNOWN時は操作履歴・Checkpoint・外部受理結果を照合するまで再実行しない。操作履歴の削除、状態の強制書換え、Job未実行の推測による再送を避ける。回復APIを追加したとは扱わない。"
+    }
+  ],
+  "nextActions": [
+    "C02/C06で確認した非保証を、想定する外部業務の副作用契約・冪等性・fencingの選択判断へ引き継ぐ。",
+    "Host Bが成功したように扱わず、RUNNING/UNKNOWNの人手確認手順を別途検討する。",
+    "C03等の追加試験・対策実装・Stage 2-2C採点は今回の結果から自動着手せず、別指示を待つ。"
+  ],
+  "references": [
+    {
+      "path": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+      "sha256": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857",
+      "priorScore": 93,
+      "reevaluated": false
+    },
+    {
+      "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+      "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a"
+    },
+    {
+      "path": "tests/stage22c-ownership-window.test.cjs",
+      "sha256": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b"
+    },
+    {
+      "path": "logs/stage22c2-c02-c06-final.log",
+      "sha256": "fc0d7f17659291826a26d6f0eef2a30aee0b327e93dd62f408c836736eacf181"
+    }
+  ],
+  "preservation": {
+    "docs/plans/PHASE-5B-minimal-contract-design.md": {
+      "before": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "after": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264"
+    },
+    "docs/architecture/ARCH-026_CMRP_設計対話整理_2026-11-07.md": {
+      "before": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "after": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff"
+    },
+    "docs/architecture/ARCH-026_Migration_Function_Inventory_20261106.md": {
+      "before": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "after": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd"
+    },
+    "docs/architecture/ARCH-026_Workflow_Function_Check_20261106.md": {
+      "before": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "after": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03"
+    },
+    "docs/architecture/ARCH-026_設計判断履歴_CJobFormとCJobの未定義_2026-11-08.md": {
+      "before": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "after": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz": {
+      "before": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "after": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz.json": {
+      "before": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "after": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz": {
+      "before": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "after": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz.json": {
+      "before": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "after": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz": {
+      "before": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "after": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz.json": {
+      "before": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "after": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz": {
+      "before": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "after": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz.json": {
+      "before": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "after": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz": {
+      "before": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "after": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz.json": {
+      "before": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "after": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz": {
+      "before": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "after": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz.json": {
+      "before": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "after": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz": {
+      "before": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "after": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz.json": {
+      "before": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "after": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz": {
+      "before": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "after": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz.json": {
+      "before": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "after": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz": {
+      "before": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "after": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz.json": {
+      "before": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "after": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz": {
+      "before": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "after": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz.json": {
+      "before": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "after": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz": {
+      "before": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "after": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz.json": {
+      "before": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "after": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz": {
+      "before": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "after": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz.json": {
+      "before": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "after": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz": {
+      "before": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "after": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz.json": {
+      "before": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "after": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz": {
+      "before": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "after": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz.json": {
+      "before": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "after": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz": {
+      "before": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "after": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz.json": {
+      "before": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "after": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a"
+    },
+    "Migration/reports/history/stage22b-artifact-assessment-20261116.json": {
+      "before": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857",
+      "after": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857"
+    },
+    "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md": {
+      "before": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "after": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a"
+    },
+    "Migration/registry.json": {
+      "before": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c",
+      "after": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c"
+    },
+    "Migration/reports/latest.json": {
+      "before": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63",
+      "after": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63"
+    },
+    "Migration/reports/status.md": {
+      "before": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796",
+      "after": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796"
+    }
+  },
+  "changes": [
+    "tests/stage22c-ownership-window.test.cjs",
+    "Migration/reports/history/stage22c2-c02-c06-results-20261116.json"
+  ],
+  "operations": {
+    "productionCodeChanged": false,
+    "schemaChanged": false,
+    "distributionUpdated": false,
+    "migrationRegistryChanged": false,
+    "migrationEvidenceReverified": false,
+    "completeApproval": false,
+    "stage": false,
+    "commit": false,
+    "push": false,
+    "additionalC03OrOtherScenarios": false,
+    "stage22CScored": false
+  }
+}

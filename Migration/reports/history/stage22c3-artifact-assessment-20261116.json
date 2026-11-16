@@ -1,0 +1,803 @@
+{
+  "schemaVersion": 1,
+  "recordType": "artifact-quality-assessment",
+  "stage": "Stage 2-2C-3",
+  "evaluatedAt": "2026-11-16T10:43:58+09:00",
+  "evaluatedAtUtc": "2026-11-16T01:43:58.398Z",
+  "purpose": "Stage 2障害・競合検証成果物の評価。開発者の評価ではない。",
+  "target": {
+    "branch": "main",
+    "productCommit": "7d42c0e5be37a0895b17b877c34dabb0e9c7af52",
+    "stage22B": "93点・合格の既存記録を維持し再採点しない。",
+    "stage22C": "検証計画・観測テスト・結果は未コミット。今回評価する成果物の個別SHAを参照に保存。",
+    "index": "空"
+  },
+  "method": {
+    "additionalValidation": false,
+    "testsRerun": false,
+    "implementationChange": false,
+    "scoringBasis": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+    "criteria": {
+      "mandatory": "5項目各10点。全達成必須。証拠不足は推測せず評価不能。",
+      "quality": "計画の内訳ごとに根拠付き部分点。",
+      "pass": "60点以上かつ必須全達成",
+      "conditional": "50〜59点かつ必須全達成",
+      "fail": "50点未満または必須未達。業務上重大な未対策リスクを具体的に認定した場合は総点にかかわらず不合格。",
+      "unassessable": "代替資料でも必要証拠/同一性が確認できない場合"
+    },
+    "limitationRule": "現行の点時検証・自動再開禁止契約に違反しないLIMITATIONを自動的な必須未達にしない。ただし、未検証をPASSに変換せず適用を妨げる条件をリスク別に記録する。"
+  },
+  "mandatory": [
+    {
+      "item": "Checkpoint整合性",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "C04の3同期点を既存Hookと実プロセス終了で特定。旧Revision5/新Revision6の完全Checkpointと全箱・履歴・操作・ownerが一致し、混在正常受理0。旧形式互換性はStage 2-2B既存Checkpoint39/関連319の証拠を再利用。",
+      "evidence": [
+        "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "Migration/reports/history/execution-ownership-fix-validation.json",
+        "tests/stage22c-sqlite-fault.test.cjs",
+        "tests/workflow-artifact-checkpoint.test.cjs"
+      ],
+      "scopeLimit": "SQLite内部COMMIT途中・電源断・任意の意味的Artifact改竄まで一般化しない。"
+    },
+    {
+      "item": "所有権・排他制御",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "C01既存19/8件の実行直前失効拒否、C05の同一/異なるIDの正規claim単一適用と敗者資格なし、旧Host保存拒否を確認。C06で観測した検証成功後の競合は既知の非原子的境界として分離。検証が拒否したのにJobを起動した証拠はない。",
+      "evidence": [
+        "Migration/reports/history/execution-ownership-fix-validation.json",
+        "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "tests/workflow-execution-ownership.test.cjs"
+      ],
+      "scopeLimit": "C06ではBの正規claimが拒否され、B取得成功後のA継続は未成立。その未確認経路をPASSにしていない。"
+    },
+    {
+      "item": "障害時のfail-closed",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "C03では独立副作用成功後に実終了し、RUNNINGに対する再要求はIN_PROGRESS/CLAIM_BUSY。C07判定不能時はJob0・EXECUTION_OWNERSHIP_UNKNOWN、保存障害はHISTORY_SAVE_OUTCOME_UNKNOWN。C04/C07で暗黙Memory切替や不正更新なし。プロセス死亡を未受信のUNKNOWN例外に捏造していない。",
+      "evidence": [
+        "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "Migration/reports/history/stage22c2-c02-c06-results-20261116.json"
+      ],
+      "scopeLimit": "開始済みJobの副作用が成立することと、障害後に新しい処理を自動起動することを区別する。"
+    },
+    {
+      "item": "再開時の状態整合性",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "C08/C09のDefinition ID/Version/Digest、全箱、待機世代/Revision、receipt、履歴継続の既存33/8件を再利用。C10の5状態でWAITING/LIMITは明示再開、RUNNING/FAILED/COMPLETEDは新規実行拒否。C05のreceipt再送では副作用増分0。",
+      "evidence": [
+        "Migration/reports/history/execution-ownership-fix-validation.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "Migration/reports/latest.json",
+        "tests/workflow-artifact-resume.test.cjs"
+      ],
+      "scopeLimit": "C10は全関連時刻を30日前へ移した模擬。実30日保管の結果ではない。"
+    },
+    {
+      "item": "重大な未対策リスクなし",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "C01〜C10に証拠/非保証/未確認の対応がある。確認した汎用Frameworkの正規経路では、重大な二重所有権、混在Checkpoint受理、拒否後の起動、暗黙fallbackの実証はない。残存Bを隠さず適用条件と進行ゲートを設ける。",
+      "evidence": [
+        "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+        "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json"
+      ],
+      "scopeLimit": "実業務一般のAリスク不存在を主張しない。非冪等な本番業務を外部照合/冪等性等なしで接続する進行判断は不可。具体的な業務で重大重複が成立すると判断された場合、その適用評価では必須未達として不合格にする。"
+    }
+  ],
+  "quality": [
+    {
+      "item": "障害試験の網羅性",
+      "maximum": 15,
+      "score": 13,
+      "breakdown": [
+        {
+          "item": "Job内部/成功直後の実終了",
+          "maximum": 5,
+          "score": 4
+        },
+        {
+          "item": "Artifact付き保存Transaction前後",
+          "maximum": 5,
+          "score": 4
+        },
+        {
+          "item": "接続/ロックと停止状態表",
+          "maximum": 5,
+          "score": 5
+        }
+      ],
+      "deduction": 2,
+      "deductionReason": "Job内部失効はcollect内の制御点が中心でCMRP各工程の全地点ではない（1点）。保存は3境界を確認したがネイティブCOMMIT内部・電源断・媒体故障は未検証（1点）。",
+      "basis": "C02/C03、C04、C07/C10の実観測で主な障害窓を分離し、例外とプロセス終了を同一視していない。",
+      "evidence": [
+        "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json"
+      ]
+    },
+    {
+      "item": "競合試験の充実度",
+      "maximum": 10,
+      "score": 8,
+      "breakdown": [
+        {
+          "item": "別Host claim・同一/異なる操作順序",
+          "maximum": 5,
+          "score": 4
+        },
+        {
+          "item": "stale継続と検証後窓の分離",
+          "maximum": 5,
+          "score": 4
+        }
+      ],
+      "deduction": 2,
+      "deductionReason": "C05は同期した固定競合条件であり全順序・負荷・公平性の反復網羅はない（1点）。C02/C06は同一Node内の独立接続で、B取得成功後のstale継続は正規契約では成立せず未確認（1点）。",
+      "basis": "独立プロセスC05の単一取得/拒否/資格/token/fence/Revision/副作用を対応付け、C02/C06ではJob開始・既成副作用・保存拒否を別に観測している。",
+      "evidence": [
+        "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json"
+      ]
+    },
+    {
+      "item": "検証の再現性",
+      "maximum": 10,
+      "score": 9,
+      "breakdown": [
+        {
+          "item": "同期点・終了位置",
+          "maximum": 4,
+          "score": 4
+        },
+        {
+          "item": "独立プロセス・一時領域",
+          "maximum": 3,
+          "score": 3
+        },
+        {
+          "item": "環境・試行ログ・再実行手順",
+          "maximum": 3,
+          "score": 2
+        }
+      ],
+      "deduction": 1,
+      "deductionReason": "環境・コマンド・観測値・SHAはあるが、一部生ログとdistはGit管理外で、Stage 2-2C単独のクリーン環境再構築から全観測までの再現は未実施。今回は代替証拠として実在ログ・参照SHAと既存runtime指紋を確認した。",
+      "basis": "Promise/IPC/marker同期、既存Hook、別プロセス終了、期限の明示的模擬を使用。単純sleep依存を避け、試験領域/子プロセスを限定して後片付けしている。",
+      "evidence": [
+        "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+        "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json"
+      ]
+    },
+    {
+      "item": "診断可能性",
+      "maximum": 10,
+      "score": 10,
+      "breakdown": [
+        {
+          "item": "code/cause/outcomeと外部結果",
+          "maximum": 4,
+          "score": 4
+        },
+        {
+          "item": "破損/競合/不明の判別",
+          "maximum": 3,
+          "score": 3
+        },
+        {
+          "item": "row/操作/台帳/時系列",
+          "maximum": 3,
+          "score": 3
+        }
+      ],
+      "deduction": 0,
+      "deductionReason": null,
+      "basis": "保存JSONにJob回数・副作用回数・Snapshot/Artifact/Revision/owner・操作と拒否理由を記録。C03の独立SQLite台帳、C04のpending/committed視点、C07のsqliteCode/BEGIN/rollback、C05の資格とreceiptを分離。初回DTO比較FAILも保持しているため、満点の根拠が確認できる。",
+      "evidence": [
+        "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "Migration/reports/history/stage22c2-c02-c06-results-20261116.json"
+      ]
+    },
+    {
+      "item": "運用資料",
+      "maximum": 5,
+      "score": 4,
+      "breakdown": [
+        {
+          "item": "RUNNING/UNKNOWN確認手順",
+          "maximum": 2,
+          "score": 1
+        },
+        {
+          "item": "禁止操作・外部責務",
+          "maximum": 2,
+          "score": 2
+        },
+        {
+          "item": "未解決と次判断",
+          "maximum": 1,
+          "score": 1
+        }
+      ],
+      "deduction": 1,
+      "deductionReason": "停止・外部結果照会・禁止操作は文書化されたが、完了反映/再処理の正式手動復旧手順・承認/監査の具体化は未完成。",
+      "basis": "C03で業務操作ID・外部照会・Job記録・fencingの長短を比較し、C10でFAILEDにも既成副作用がある例を示している。強制DB書換えを推奨していない。",
+      "evidence": [
+        "Migration/reports/history/stage22c2-c03-results-20261116.json",
+        "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+        "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md"
+      ]
+    }
+  ],
+  "totals": {
+    "mandatory": 50,
+    "quality": 44,
+    "maximum": 100,
+    "total": 94
+  },
+  "allMandatoryAchieved": true,
+  "verdict": "合格",
+  "verdictScope": "汎用Frameworkの現行契約と、確認したローカル障害条件の範囲で合格。業務一般の安全性、本番導入、外部副作用の原子性、未検証条件のPASSを意味しない。",
+  "scenarioMatrix": [
+    {
+      "id": "C01",
+      "result": "PASS（既存証拠再利用）",
+      "risk": "C",
+      "evidence": "Migration/reports/history/execution-ownership-fix-validation.json"
+    },
+    {
+      "id": "C02",
+      "result": "LIMITATION",
+      "risk": "B",
+      "evidence": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json"
+    },
+    {
+      "id": "C03",
+      "result": "LIMITATION",
+      "risk": "B",
+      "evidence": "Migration/reports/history/stage22c2-c03-results-20261116.json"
+    },
+    {
+      "id": "C04",
+      "result": "PASS（3同期点）",
+      "risk": "B",
+      "evidence": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json"
+    },
+    {
+      "id": "C05",
+      "result": "PASS",
+      "risk": "C",
+      "evidence": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json"
+    },
+    {
+      "id": "C06",
+      "result": "LIMITATION",
+      "risk": "B",
+      "evidence": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json"
+    },
+    {
+      "id": "C07",
+      "result": "PASS（4障害条件）",
+      "risk": "B",
+      "evidence": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json"
+    },
+    {
+      "id": "C08",
+      "result": "PASS（既存証拠再利用、C10で期限模擬補足）",
+      "risk": "C",
+      "evidence": "Migration/reports/history/execution-ownership-fix-validation.json"
+    },
+    {
+      "id": "C09",
+      "result": "PASS（既存証拠再利用、C10で期限模擬補足）",
+      "risk": "C",
+      "evidence": "Migration/reports/history/execution-ownership-fix-validation.json"
+    },
+    {
+      "id": "C10",
+      "result": "PASS（5状態）",
+      "risk": "B",
+      "evidence": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json"
+    }
+  ],
+  "unconfirmed": [
+    "C06のB取得成功後のstale実行は、正規claimが拒否したため未成立。別経路で取得成功を強制していない。",
+    "任意のArtifact意味的改竄を一般に検出する機構を実証したわけではない。",
+    "新観測を追加した後の全回帰/クリーン環境再現は今回も実行していない。製品は確定Commitから変更なし。"
+  ],
+  "residualRisks": [
+    {
+      "id": "R1",
+      "title": "Job実行中のlease失効",
+      "scenario": "C02",
+      "classification": "B",
+      "observedOrUntested": "観測済みLIMITATION：Job1・副作用1、その後保存拒否。",
+      "whyFrameworkNextStepAllowed": "開始済みJobの取消しを保証しておらず、正規B takeover・自動再実行は拒否されるため、Frameworkの境界確認として次の設計工程へ進める。",
+      "whenProgressMustBeBlocked": "非冪等業務で失効後の外部更新が重大損害となり、外部対策も利用制限もない場合は適用を止める。",
+      "minimumNextAction": "業務操作の安定ID、外部冪等化/fencing、期限内更新の要否を判断する。"
+    },
+    {
+      "id": "R2",
+      "title": "所有権検証後の競合窓",
+      "scenario": "C06",
+      "classification": "B",
+      "observedOrUntested": "観測済みLIMITATION：実検証成功後の応答待ちに失効するとJobが始まり得る。",
+      "whyFrameworkNextStepAllowed": "点時検証の限界を明示し、正規claim単一性と保存拒否を別に実証している。外部原子性を達成したとは扱わない。",
+      "whenProgressMustBeBlocked": "外部側fence等なしで実行開始まで常に有効な所有権を要求する業務へ適用する判断は不可。",
+      "minimumNextAction": "必要な副作用受付先でfenceを検査する契約を設計する。B取得成功後の継続をPASSと捏造しない。"
+    },
+    {
+      "id": "R3",
+      "title": "外部副作用とCheckpoint保存の非原子性",
+      "scenario": "C02/C03/C06",
+      "classification": "B",
+      "observedOrUntested": "観測済み：外部成功/Job成功とDB RUNNINGが併存。再要求の副作用増分は0。",
+      "whyFrameworkNextStepAllowed": "無条件再実行は止まり、独立記録で成功と未確定状態を診断できた。結果不明を未実行にしない制約の下で次の設計へ進める。",
+      "whenProgressMustBeBlocked": "外部受理を識別/照会できず、非冪等副作用の重複を防ぐ手段もない実業務への接続は止める。",
+      "minimumNextAction": "外部受理結果照合・業務操作ID/冪等性を決める。新fenceだけで再送重複が解決するとはしない。"
+    },
+    {
+      "id": "R4",
+      "title": "RUNNING／FAILEDの手動復旧未整備",
+      "scenario": "C03/C10",
+      "classification": "B",
+      "observedOrUntested": "既存契約の拒否を確認。安全な完了補正/強制回復は未提供。",
+      "whyFrameworkNextStepAllowed": "運用停止を許容するローカル基盤検証の区切りとしては終了できる。次工程で回復要件を設計対象にできる。",
+      "whenProgressMustBeBlocked": "即時無人復旧が必須の業務や、未整備のまま直接DB補正/再送する運用へ進めない。",
+      "minimumNextAction": "状態/外部結果の確認、判断者、承認、監査、補正/再処理の正式手順を別途具体化する。"
+    },
+    {
+      "id": "R5",
+      "title": "SQLite内部COMMIT途中・電源断・媒体障害",
+      "scenario": "C04/C07",
+      "classification": "B",
+      "observedOrUntested": "未検証。プロセス終了3境界・接続切断・実ロックとは区別。",
+      "whyFrameworkNextStepAllowed": "確認した障害条件の整合性は実証済み。これら未確認条件を耐障害保証から除いた次の開発判断は可能。",
+      "whenProgressMustBeBlocked": "電源断/媒体故障を含む保証を求める本番判断やデータ保全契約を、この結果だけで承認しない。",
+      "minimumNextAction": "要求する耐障害水準・バックアップ/復旧方針を決め、必要時に対象を限定した試験を別途計画する。"
+    },
+    {
+      "id": "R6",
+      "title": "実時間長期停止・全競合順序",
+      "scenario": "C05/C10",
+      "classification": "B",
+      "observedOrUntested": "未検証。30日分の時刻整合模擬と固定barrier競合を実施。",
+      "whyFrameworkNextStepAllowed": "時刻/状態に依存する正規許可・拒否は模擬で確認でき、制約を明記した基盤開発は進められる。",
+      "whenProgressMustBeBlocked": "実保管期間の保証、全負荷/スケジュールでの可用性・公平性が必須の適用承認は別途必要。",
+      "minimumNextAction": "対象運用の期間・負荷・競合条件を定義し、必要な有界反復/長期保管検証を選ぶ。"
+    }
+  ],
+  "existingTestEvidence": {
+    "C02C06": {
+      "pass": 2,
+      "fail": 0,
+      "skip": 0,
+      "meaning": "LIMITATIONを正しく観測する試験がPASS"
+    },
+    "C03": {
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "meaning": "実終了と停止防御を観測"
+    },
+    "C04C07": {
+      "pass": 7,
+      "fail": 0,
+      "skip": 0,
+      "firstRun": "4PASS/3FAIL。token:undefinedのJSON射影差をテスト側で修正。初回記録は保存済み。"
+    },
+    "C05C10": {
+      "pass": 7,
+      "fail": 0,
+      "skip": 0
+    },
+    "stage22BReused": {
+      "ownership": 19,
+      "restoreClaim": 33,
+      "actualProcesses": 8,
+      "checkpoint": 39,
+      "unit": 80,
+      "related": 319,
+      "package": 6,
+      "root": 541,
+      "migrationManagement": 30,
+      "migrationAssets": 226,
+      "finalFail": 0,
+      "finalSkip": 0,
+      "overlap": "Not summed"
+    },
+    "note": "すべて過去の実行結果。本評価で試験した件数は0。重複する既存試験を単純合算して採点しない。"
+  },
+  "stage2ClosureRecommendation": {
+    "recommendation": "Stage 2をFramework実装・ローカル障害特性確認の区切りとして終了し、次の設計/適用計画工程へ進める。",
+    "reason": "C01〜C10の証拠と限界が対応し、現行正規経路で新たな重大未対策Aは実証されていない。残存リスクを外部契約/回復運用/対象環境の進行ゲートとして引き継ぐ。",
+    "notAuthorized": [
+      "非冪等な本番業務への無対策導入",
+      "RUNNING/FAILEDの強制DB復旧",
+      "残存Bの解消済み宣言",
+      "未実施障害条件の保証",
+      "Migration COMPLETE承認",
+      "Stage/Commit/Push"
+    ],
+    "gitStatusCaveat": "Stage 2-2Cの観測成果と本採点は未コミット。Git確定は別途指示とレビューが必要。"
+  },
+  "handoff": [
+    "利用者が本記録の限定スコープと減点理由をレビューする。",
+    "次の設計で安定業務操作ID、外部照会/冪等性/fencing、手動回復の権限・監査・完了補正を優先判断する。",
+    "対象業務・環境が要求する耐障害/保管期間/負荷を決め、未確認条件が必須となる場合だけ追加計画を立てる。",
+    "本採点を根拠に、対策実装・追加試験・Commit/Pushを自動開始しない。"
+  ],
+  "references": [
+    {
+      "role": "plan",
+      "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+      "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a"
+    },
+    {
+      "role": "stage22B",
+      "path": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+      "sha256": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857"
+    },
+    {
+      "role": "base",
+      "path": "Migration/reports/history/execution-ownership-fix-validation.json",
+      "sha256": "6440d96aa3566fe280d816a05397ddfe485e416b9d52411254c616a0b73db9e3"
+    },
+    {
+      "role": "c0206",
+      "path": "Migration/reports/history/stage22c2-c02-c06-results-20261116.json",
+      "sha256": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9"
+    },
+    {
+      "role": "c03",
+      "path": "Migration/reports/history/stage22c2-c03-results-20261116.json",
+      "sha256": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10"
+    },
+    {
+      "role": "c0407",
+      "path": "Migration/reports/history/stage22c2-c04-c07-results-20261116.json",
+      "sha256": "800f8af2e2f70f6695394942416d91162757341e4f0d6488347757381e1952bb"
+    },
+    {
+      "role": "c0510",
+      "path": "Migration/reports/history/stage22c2-c05-c10-results-20261116.json",
+      "sha256": "e9d45f46a31be69ff3938a2bab1048b174db2f5511e8cb45881686b9ccc4e35f"
+    },
+    {
+      "role": "latest",
+      "path": "Migration/reports/latest.json",
+      "sha256": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63"
+    },
+    {
+      "role": "status",
+      "path": "Migration/reports/status.md",
+      "sha256": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796"
+    }
+  ],
+  "referenceChecks": [
+    {
+      "path": "Migration/reports/history/stage22b-artifact-assessment-20261116.json",
+      "sha256": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857",
+      "priorScore": 93,
+      "reevaluated": false,
+      "matches": true
+    },
+    {
+      "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+      "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "matches": true
+    },
+    {
+      "path": "tests/stage22c-ownership-window.test.cjs",
+      "sha256": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b",
+      "matches": true
+    },
+    {
+      "path": "logs/stage22c2-c02-c06-final.log",
+      "sha256": "fc0d7f17659291826a26d6f0eef2a30aee0b327e93dd62f408c836736eacf181",
+      "matches": true
+    },
+    {
+      "path": "tests/stage22c-c03-process.test.cjs",
+      "sha256": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99",
+      "matches": true
+    },
+    {
+      "path": "tests/stage22c-c03/child.cjs",
+      "sha256": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1",
+      "matches": true
+    },
+    {
+      "path": "logs/stage22c2-c03.log",
+      "sha256": "5bb247e0851d755b056395d4b86d46830af6bf906117383675b89897e5b16eb5",
+      "matches": true
+    },
+    {
+      "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+      "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "matches": true
+    },
+    {
+      "path": "tests/stage22c-sqlite-fault.test.cjs",
+      "sha256": "d609d283b6816a408bdfc17a9121b23dd1d36719f67758a8bc69c6c1b5f71079",
+      "matches": true
+    },
+    {
+      "path": "tests/stage22c-sqlite-fault/child.cjs",
+      "sha256": "edae4804da54d259137022779bd7815589c319567a61cb79165074151356a088",
+      "matches": true
+    },
+    {
+      "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+      "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "matches": true
+    },
+    {
+      "path": "logs/stage22c2-c04-c07-final.log",
+      "sha256": "fca0fbf3d7d34f8ac5585254058f0070482133409ec9663797206b0b0fa4cc6a",
+      "matches": true
+    },
+    {
+      "path": "tests/stage22c-claim-states.test.cjs",
+      "sha256": "eaefcd7a67dcb4609bfb93ba68126332b082c081dee739c5e846f1475ab87150",
+      "matches": true
+    },
+    {
+      "path": "tests/stage22c-claim-states/child.cjs",
+      "sha256": "b32590bcfd51b6f715b3b3ae98fa269b26be7978c64d95b52f3e6fda1ef98737",
+      "matches": true
+    },
+    {
+      "path": "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md",
+      "sha256": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "matches": true
+    },
+    {
+      "path": "Migration/reports/history/execution-ownership-fix-validation.json",
+      "sha256": "6440d96aa3566fe280d816a05397ddfe485e416b9d52411254c616a0b73db9e3",
+      "matches": true
+    },
+    {
+      "path": "logs/stage22c2-c05-c10-verified.log",
+      "sha256": "88e0079857d592bb24a3f2770697dad6f2f8e709b7d53da96d8e863975e3db55",
+      "matches": true
+    }
+  ],
+  "preservation": {
+    "docs/plans/PHASE-5B-minimal-contract-design.md": {
+      "before": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "after": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264"
+    },
+    "docs/architecture/ARCH-026_CMRP_設計対話整理_2026-11-07.md": {
+      "before": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "after": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff"
+    },
+    "docs/architecture/ARCH-026_Migration_Function_Inventory_20261106.md": {
+      "before": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "after": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd"
+    },
+    "docs/architecture/ARCH-026_Workflow_Function_Check_20261106.md": {
+      "before": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "after": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03"
+    },
+    "docs/architecture/ARCH-026_設計判断履歴_CJobFormとCJobの未定義_2026-11-08.md": {
+      "before": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "after": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz": {
+      "before": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "after": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz.json": {
+      "before": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "after": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz": {
+      "before": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "after": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz.json": {
+      "before": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "after": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz": {
+      "before": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "after": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz.json": {
+      "before": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "after": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz": {
+      "before": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "after": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz.json": {
+      "before": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "after": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz": {
+      "before": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "after": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz.json": {
+      "before": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "after": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz": {
+      "before": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "after": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz.json": {
+      "before": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "after": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz": {
+      "before": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "after": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz.json": {
+      "before": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "after": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz": {
+      "before": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "after": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz.json": {
+      "before": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "after": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz": {
+      "before": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "after": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz.json": {
+      "before": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "after": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz": {
+      "before": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "after": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz.json": {
+      "before": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "after": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz": {
+      "before": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "after": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz.json": {
+      "before": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "after": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz": {
+      "before": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "after": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz.json": {
+      "before": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "after": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz": {
+      "before": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "after": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz.json": {
+      "before": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "after": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz": {
+      "before": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "after": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz.json": {
+      "before": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "after": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz": {
+      "before": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "after": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz.json": {
+      "before": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "after": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a"
+    },
+    "Migration/reports/history/stage22b-artifact-assessment-20261116.json": {
+      "before": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857",
+      "after": "88bcd6c39fde48e8f9eca290ad2507ead4610dc557fba995cb964596047ac857"
+    },
+    "Migration/reports/history/stage22c1-fault-concurrency-validation-plan-20261116.md": {
+      "before": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a",
+      "after": "4226b4cc0eb2a5dc67339d01b0f37f312203f8d6b794ca29f703d2450575b17a"
+    },
+    "Migration/registry.json": {
+      "before": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c",
+      "after": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c"
+    },
+    "Migration/reports/latest.json": {
+      "before": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63",
+      "after": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63"
+    },
+    "Migration/reports/status.md": {
+      "before": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796",
+      "after": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796"
+    },
+    "Migration/reports/history/stage22c2-c02-c06-results-20261116.json": {
+      "before": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9",
+      "after": "f8c3ccbd998efc049fcd9f844de843e91e84b04e5f93c8ca448da3ae6be3b8c9"
+    },
+    "tests/stage22c-ownership-window.test.cjs": {
+      "before": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b",
+      "after": "ea1ca8e200adead16e82ca62d6ac8a7203cf49674e127545c611eff5e1aabf9b"
+    },
+    "Migration/reports/history/stage22c2-c03-results-20261116.json": {
+      "before": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10",
+      "after": "a06803ace9344ff40d83d71404a50131f7340248f89affd4370a7068ec387d10"
+    },
+    "tests/stage22c-c03-process.test.cjs": {
+      "before": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99",
+      "after": "8d953e6ec615090a9d40facf1ad4649fd7e441520da4aa8bd8fd67991309dd99"
+    },
+    "tests/stage22c-c03/child.cjs": {
+      "before": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1",
+      "after": "12f560170b80837c83767f00f4cb20a400d9dd1c995c848b0e2ceb8b12e2a5d1"
+    },
+    "Migration/reports/history/stage22c2-c04-c07-results-20261116.json": {
+      "before": "800f8af2e2f70f6695394942416d91162757341e4f0d6488347757381e1952bb",
+      "after": "800f8af2e2f70f6695394942416d91162757341e4f0d6488347757381e1952bb"
+    },
+    "tests/stage22c-sqlite-fault.test.cjs": {
+      "before": "d609d283b6816a408bdfc17a9121b23dd1d36719f67758a8bc69c6c1b5f71079",
+      "after": "d609d283b6816a408bdfc17a9121b23dd1d36719f67758a8bc69c6c1b5f71079"
+    },
+    "tests/stage22c-sqlite-fault/child.cjs": {
+      "before": "edae4804da54d259137022779bd7815589c319567a61cb79165074151356a088",
+      "after": "edae4804da54d259137022779bd7815589c319567a61cb79165074151356a088"
+    },
+    "Migration/reports/history/stage22c2-c05-c10-results-20261116.json": {
+      "before": "e9d45f46a31be69ff3938a2bab1048b174db2f5511e8cb45881686b9ccc4e35f",
+      "after": "e9d45f46a31be69ff3938a2bab1048b174db2f5511e8cb45881686b9ccc4e35f"
+    },
+    "tests/stage22c-claim-states.test.cjs": {
+      "before": "eaefcd7a67dcb4609bfb93ba68126332b082c081dee739c5e846f1475ab87150",
+      "after": "eaefcd7a67dcb4609bfb93ba68126332b082c081dee739c5e846f1475ab87150"
+    },
+    "tests/stage22c-claim-states/child.cjs": {
+      "before": "b32590bcfd51b6f715b3b3ae98fa269b26be7978c64d95b52f3e6fda1ef98737",
+      "after": "b32590bcfd51b6f715b3b3ae98fa269b26be7978c64d95b52f3e6fda1ef98737"
+    }
+  },
+  "operations": {
+    "onlyAssessmentRecordAdded": true,
+    "testsAdded": false,
+    "testsExecuted": false,
+    "productionCodeChanged": false,
+    "sqliteSchemaChanged": false,
+    "distributionUpdated": false,
+    "migrationApprovalChanged": false,
+    "stage": false,
+    "commit": false,
+    "push": false
+  }
+}

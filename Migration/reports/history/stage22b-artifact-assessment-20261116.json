@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "recordType": "artifact-quality-assessment",
+  "purpose": "Stage 2-2B確定成果物の品質評価。開発者個人の評価ではない。",
+  "evaluatedAt": "2026-11-16T08:33:18+09:00",
+  "evaluatedAtUtc": "2026-11-15T23:33:18.781Z",
+  "target": {
+    "branch": "main",
+    "commit": "7d42c0e5be37a0895b17b877c34dabb0e9c7af52",
+    "parentCommit": "3d2fd266d4f3e8e6c589acd1cde7e19a8a7782d9",
+    "stage": "Stage 2-2B",
+    "worktree": "対象22ファイルは確定Commitに一致。保留5文書は対象外。Stage空。",
+    "stage22C": "未着手"
+  },
+  "method": {
+    "testRerun": false,
+    "implementationChange": false,
+    "scope": "既存証跡・テスト定義・ソース・確定Commit差分の静的照合による評価。今回新しく試験したPASS数は0。",
+    "mandatoryScoring": "必須は各10点。全達成を合格の必要条件とする。",
+    "qualityScoring": "確認できた完成度を項目別に評価。Stage 2-2C等の成熟度不足の減点をStage 2-2B必須未達と混同しない。",
+    "criteria": {
+      "pass": "60点以上かつ必須全達成",
+      "conditional": "50〜59点かつ必須全達成",
+      "fail": "50点未満または必須未達",
+      "unassessable": "必要証拠・対象同一性を確認できない"
+    }
+  },
+  "mandatory": [
+    {
+      "item": "Checkpoint復元・整合性",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "全箱・空箱・明示undefined・参照独立性の復元、保存状態と操作履歴の照合、未結合Managerからclaim後だけ実行する経路を確認。",
+      "references": [
+        "Frwk_Units/Workflow/src/ArtifactManager.ts:47 fromSnapshot",
+        "Frwk_Units/Workflow/src/WorkflowBuilder.ts:58 restoreWorkflowCheckpoint",
+        "src/adapters/workflow-waiting/lifecycle.cjs validateCheckpointConsistency",
+        "tests/workflow-artifact-checkpoint.test.cjs",
+        "tests/workflow-artifact-resume.test.cjs"
+      ],
+      "deductionReason": null
+    },
+    {
+      "item": "Definition照合",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "ID・Version・既存Digestの全一致とDefinition宣言に対する箱集合の完全一致を検証。不一致を修復せず拒否する実装と否定試験の既存PASSを確認。",
+      "references": [
+        "src/adapters/workflow-waiting/lifecycle.cjs:99 validateCheckpointDefinition",
+        "tests/workflow-artifact-resume.test.cjs strict Definition mismatch / digest mismatch / box mismatch"
+      ],
+      "deductionReason": null
+    },
+    {
+      "item": "SQLite claim・Revision管理",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "既存Transaction内でRevisionだけでなくCheckpoint全体、状態、操作、ownerを再照合し、新owner・fence・操作とRevisionを更新。実プロセス競合の単一適用、操作再送の読取専用receipt、claim応答喪失時の停止を証跡で確認。",
+      "references": [
+        "src/adapters/workflow-waiting/lifecycle.cjs:123 #claimArtifactOperation",
+        "src/adapters/workflow-waiting/sqlite.cjs update",
+        "tests/workflow-artifact-resume-process.test.cjs:31 concurrent claim / :38 replay / :48 UNKNOWN"
+      ],
+      "deductionReason": null
+    },
+    {
+      "item": "Job実行前の所有権検証",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "Hook前後・訪問Factory前・Job/Check直前のPort呼出しとSQLite現在row・DB時刻による照合を確認。lease失効時Job件数0、新Host claim後の旧Host実行0・再保存拒否、Port未接続・UNKNOWN停止を検証する19試験と実プロセス追加1試験の既存PASSを確認。",
+      "references": [
+        "Frwk_Units/Workflow/src/CWorkflow.ts:277 assertOwnership / :304 / :312 / :328",
+        "src/adapters/workflow-waiting/lifecycle.cjs:157 assertCanExecuteStep",
+        "src/adapters/workflow-waiting/sqlite.cjs:10 inspect",
+        "tests/workflow-execution-ownership.test.cjs",
+        "tests/workflow-artifact-resume-process.test.cjs:57"
+      ],
+      "deductionReason": null
+    },
+    {
+      "item": "旧契約互換性・重大回帰なし",
+      "maximum": 10,
+      "score": 10,
+      "achieved": true,
+      "basis": "既存Checkpoint・旧Definition・Memory経路・CMRP6工程を保持する差分と、Checkpoint39・Unit80・関連319・ルート541の既存PASSを確認。確認した範囲で既知の重大回帰なし。すべての環境や本番運用の無欠陥保証ではない。",
+      "references": [
+        "tests/workflow-artifact-checkpoint.test.cjs",
+        "tests/workflow-waiting.test.cjs",
+        "Frwk_Units/Workflow/tests/workflow.test.cjs",
+        "Migration/reports/history/execution-ownership-fix-validation.json tests",
+        "Migration/reports/latest.json"
+      ],
+      "deductionReason": null
+    }
+  ],
+  "quality": [
+    {
+      "item": "テスト充実度",
+      "maximum": 20,
+      "score": 18,
+      "basis": "正常・否定・実プロセス競合・claim後終了・応答喪失・副作用後保存失敗・所有権失効・旧経路回帰を継続試験化し、修正前FAILも保存している。",
+      "deduction": 2,
+      "deductionReason": "包括的な障害地点・長時間競合・検証直後から外部副作用までの競合評価は未完了。Stage 2-2Cの未着手範囲であり、Stage 2-2B必須未達とは扱わない。",
+      "references": [
+        "tests/workflow-artifact-resume-process.test.cjs",
+        "tests/workflow-execution-ownership.test.cjs",
+        "Frwk_Units/Workflow/docs/README.md:486"
+      ]
+    },
+    {
+      "item": "設計・保守性",
+      "maximum": 15,
+      "score": 13,
+      "basis": "Builder/実行器/ArtifactManager/保存Adapterの責務を分け、任意PortでSQLite固有処理をCoreへ混入させず、既存Runner・実行ループを再利用している。",
+      "deduction": 2,
+      "deductionReason": "Adapterがdist内のPrototype互換入口・正式Unitのビルド済みコードへ直接依存しており、ソース配置とビルド順への結合が残る（1点）。所有権読取のTransactionを工程内で複数回行うため、競合・性能面の運用指標を裏付ける負荷評価は未確認（1点）。",
+      "references": [
+        "src/adapters/workflow-waiting/lifecycle.cjs:4",
+        "Frwk_Units/Workflow/src/CWorkflow.ts:277",
+        "src/adapters/workflow-waiting/sqlite.cjs:10"
+      ]
+    },
+    {
+      "item": "資料・Migration",
+      "maximum": 10,
+      "score": 9,
+      "basis": "契約・非保証・過去の欠陥と途中FAILを追記し、既存証跡を保存。最新10グループ226 PASS、37資産VERIFIED、COMPLETE承認0。評価対象との同一性もGit差分と入力ハッシュで照合できた。",
+      "deduction": 1,
+      "deductionReason": "実別プロセス等の一部生ログはGit管理外のlogs/にあり、確定Commitには件数とSHAによる参照が中心。本環境では10本すべて実在・SHA一致を確認できたが、別checkout単体で同じ生ログを閲覧できる状態ではない。",
+      "references": [
+        "Migration/reports/history/execution-ownership-fix-validation.json logs",
+        "Migration/reports/latest.json",
+        "Migration/reports/status.md",
+        "Frwk_Units/Workflow/docs/README.md"
+      ]
+    },
+    {
+      "item": "運用・障害対応",
+      "maximum": 5,
+      "score": 3,
+      "basis": "REFUSEDとUNKNOWNを区別し、RUNNING自動再開・Memoryフォールバック・無断再claimを禁止。結果不明を成功/未実行と決めつけず安全停止する。",
+      "deduction": 2,
+      "deductionReason": "RUNNING/UNKNOWNを停止した後の人手確認・再開判断の具体的な運用手順、および外部副作用先の冪等性・fencingとの連携は未完成。安全停止は達成しているが回復運用の完成度に余地がある。",
+      "references": [
+        "Frwk_Units/Workflow/docs/README.md Stage 2-2B 状態・冪等性・障害",
+        "Migration/README.md Stage 2-2B 引継ぎ",
+        "src/adapters/workflow-waiting/lifecycle.cjs"
+      ]
+    }
+  ],
+  "totals": {
+    "mandatory": 50,
+    "quality": 43,
+    "total": 93,
+    "maximum": 100,
+    "allMandatoryAchieved": true
+  },
+  "verdict": "合格",
+  "verdictScope": "Stage 2-2Bの既定スコープ内で合格。本番導入・外部副作用の原子性・Stage 2-2C完了・Migration COMPLETEを意味しない。",
+  "existingTestEvidence": {
+    "ownership": 19,
+    "restoreClaim": 33,
+    "actualProcesses": 8,
+    "checkpoint": 39,
+    "unit": 80,
+    "related": 319,
+    "package": 6,
+    "root": 541,
+    "migrationManagement": 30,
+    "migrationAssets": 226,
+    "finalFail": 0,
+    "finalSkip": 0,
+    "overlap": "Not summed"
+  },
+  "existingMigration": {
+    "registered": 37,
+    "verified": 37,
+    "warnings": 0,
+    "completeApprovals": 0,
+    "groupCounts": {
+      "db": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0,
+        "skipped": 0
+      },
+      "core": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0
+      },
+      "member": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0
+      },
+      "time": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0,
+        "skipped": 0
+      },
+      "workflow": {
+        "tests": 80,
+        "pass": 80,
+        "fail": 0,
+        "skipped": 0
+      },
+      "public-api": {
+        "tests": 8,
+        "pass": 8,
+        "fail": 0,
+        "skipped": 0
+      },
+      "member-schema": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0,
+        "skipped": 0
+      },
+      "artifact-checkpoint": {
+        "tests": 39,
+        "pass": 39,
+        "fail": 0,
+        "skipped": 0
+      },
+      "artifact-resume": {
+        "tests": 33,
+        "pass": 33,
+        "fail": 0,
+        "skipped": 0
+      },
+      "execution-ownership": {
+        "tests": 19,
+        "pass": 19,
+        "fail": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "identity": {
+    "preCommitEvidenceBase": "3d2fd266d4f3e8e6c589acd1cde7e19a8a7782d9",
+    "explanation": "証跡headは実装検証時の基点3d2fd26。親Commit一致、Commit差分22ファイル一覧一致、全22ファイルのGit blob一致で確定版へ対応付けた。試験時HEADを確定Commitだったと改変しない。",
+    "files": [
+      {
+        "path": "Frwk_Units/Workflow/docs/README.md",
+        "commitBlob": "1dd7b5f13a69b8d2df4484b40bd541e0494ee801"
+      },
+      {
+        "path": "Frwk_Units/Workflow/src/ArtifactManager.ts",
+        "commitBlob": "942c587275759e237432067e8ad695c2f0017096"
+      },
+      {
+        "path": "Frwk_Units/Workflow/src/CWorkflow.ts",
+        "commitBlob": "7a747bd64623cd820abe1c49fd49a5582b1e5801"
+      },
+      {
+        "path": "Frwk_Units/Workflow/src/WorkflowBuilder.ts",
+        "commitBlob": "e421969f09060ddc92e0c06ef42f1597bdd4de0d"
+      },
+      {
+        "path": "Migration/README.md",
+        "commitBlob": "b04e9d5da24681d3ba2de55a5f47011150b48103"
+      },
+      {
+        "path": "Migration/registry.json",
+        "commitBlob": "5bfb182d51ccc7e200ab923df76f74c714ee3819"
+      },
+      {
+        "path": "Migration/reports/history/artifact-resume-before-stage22b.json",
+        "commitBlob": "c4639979f59708b8cf08bb7080ebecf28ad8c9ac"
+      },
+      {
+        "path": "Migration/reports/history/artifact-resume-stage22b-validation.json",
+        "commitBlob": "3a70074185b3efaf12c334ad5a24e25a1b678be5"
+      },
+      {
+        "path": "Migration/reports/history/execution-ownership-before-fix.json",
+        "commitBlob": "eea0805db92eed4c244c4aa1b7fd2c7829cb7808"
+      },
+      {
+        "path": "Migration/reports/history/execution-ownership-fix-validation.json",
+        "commitBlob": "33cf2b9d2e59674c6be99e31de60db3c72c9eb1a"
+      },
+      {
+        "path": "Migration/reports/latest.json",
+        "commitBlob": "984ced229d2b0cd1f39dc0b093ed0f65404b458b"
+      },
+      {
+        "path": "Migration/reports/status.md",
+        "commitBlob": "28509a9bcf58310912f3fc260d33ab6978a91900"
+      },
+      {
+        "path": "Migration/src/verifier.mjs",
+        "commitBlob": "31440dd307ddd6a7856889679f93a5f86a731f97"
+      },
+      {
+        "path": "src/adapters/workflow-waiting/lifecycle.cjs",
+        "commitBlob": "326d62ee72c85b7c86eab60d69cc0d0f1bfc000d"
+      },
+      {
+        "path": "src/adapters/workflow-waiting/sqlite.cjs",
+        "commitBlob": "28240f6961266d80297f5bae10a6fece3ec8d151"
+      },
+      {
+        "path": "tests/workflow-artifact-resume-process.test.cjs",
+        "commitBlob": "3083d1e6945a4a69432917f0deeac636d41232d8"
+      },
+      {
+        "path": "tests/workflow-artifact-resume.test.cjs",
+        "commitBlob": "be51118f90402210290c688889bb9a54daac5c4d"
+      },
+      {
+        "path": "tests/workflow-artifact-resume/child.cjs",
+        "commitBlob": "c3dd1e297f5d2a6a25e5aece822dbd5651811f2e"
+      },
+      {
+        "path": "tests/workflow-artifact-resume/scenario.cjs",
+        "commitBlob": "d8b641dfa5dfade3289388804b5bef216638ba8a"
+      },
+      {
+        "path": "tests/workflow-execution-ownership.test.cjs",
+        "commitBlob": "6c935d590c10d01bc52bb5ed6cc9f8e9307c7c08"
+      },
+      {
+        "path": "tests/workflow-unit-package.test.cjs",
+        "commitBlob": "ff000a59311210bef24b242a9353f750984a764d"
+      },
+      {
+        "path": "tools/package-workflow-unit.cjs",
+        "commitBlob": "0a216fdfbba037b4e250a3cee824cecd1797ce08"
+      }
+    ],
+    "verificationInputNote": "既存入力指紋のGit管理ファイルを193回照合。9種類のraw SHA差は作業ツリーCRLFとGit内LFのみで、既存指紋は作業ツリーのraw SHAと一致した。Workflow Definition Digest契約を変更/再正規化したものではない。"
+  },
+  "references": [
+    {
+      "path": "Migration/reports/history/artifact-resume-stage22b-validation.json",
+      "sha256": "3b71a01821457b3ee2b684fec4bac95b94c76ff0d57e93c04598686a806a2591"
+    },
+    {
+      "path": "Migration/reports/history/execution-ownership-fix-validation.json",
+      "sha256": "6440d96aa3566fe280d816a05397ddfe485e416b9d52411254c616a0b73db9e3"
+    },
+    {
+      "path": "Migration/reports/latest.json",
+      "sha256": "5d31deecf77d4ce40369048d0046eb1e67a8d504b58198332d907838ad2eaf63"
+    },
+    {
+      "path": "Migration/reports/status.md",
+      "sha256": "1952c93158c93222c3b2b682d992e682f70fcd1d79263ca5ee0f1e0e3f684796"
+    },
+    {
+      "path": "Migration/registry.json",
+      "sha256": "ef2a1ded073369be2621ba365ab475cc03d662641c33089eb7a0b18dd282dc6c"
+    },
+    {
+      "path": "Frwk_Units/Workflow/docs/README.md",
+      "sha256": "1a28249c2f28c16d84c67af13779522aa688504c64799302470f6d98128f427b"
+    },
+    {
+      "path": "Migration/README.md",
+      "sha256": "dd2b44ac0554758bf1105f1b17a9e8d021285c8ec846e9b9dc457408ddc388ea"
+    }
+  ],
+  "localLogChecks": [
+    {
+      "path": "logs/ownership-fix-tests-final.log",
+      "exists": true,
+      "sha256": "c8d6975136939184656f75c49b669c4b53b7dbe9de4ab03b3d1eebd70d74fcba",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-process.log",
+      "exists": true,
+      "sha256": "53408247b9c63d135c706d3fb3ef7784e9ba52f2faff11cc6d7df2a1efc3625c",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-final-tests.log",
+      "exists": true,
+      "sha256": "10ecb7e2cba0c6962bfa989490146ddb670fc16c182a715e40eaaac528065b38",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-unit.log",
+      "exists": true,
+      "sha256": "c90557485437a7fb8dfad480889d33f67ef45b7e6cf2ee47450ae36d19f56f2b",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-related.log",
+      "exists": true,
+      "sha256": "cb70259181b0e3a05bd4ffd0ce1e01d0a10d6f895418d31ed9376bbbc04a867d",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-package.log",
+      "exists": true,
+      "sha256": "83de7f7edfbb2d0277f004e4fbbffea1baf82de5d2bee1da783ca2eeb6c4b30c",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-root.log",
+      "exists": true,
+      "sha256": "31486bd188dc7bf36b26f6a29f4d18a29fc03d07d68d113691c683a445a0955d",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-management.log",
+      "exists": true,
+      "sha256": "75d7f774b865eb939186bfb79a3a1d4571cc1782d10f08d6de634b53a1fa7156",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-final-assets.log",
+      "exists": true,
+      "sha256": "361560a1f39eef76647ef5ddf59ffdcf1520e607b67f4f734962d9745d802d57",
+      "hashMatches": true
+    },
+    {
+      "path": "logs/ownership-fix-build-final.log",
+      "exists": true,
+      "sha256": "1af6cf5116f093fdae2bc7ec941be2c6067ff7b007b121a0bc0220a9b22d21cb",
+      "hashMatches": true
+    }
+  ],
+  "preservation": {
+    "docs/plans/PHASE-5B-minimal-contract-design.md": {
+      "before": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264",
+      "after": "32ecba0f735d25910df0fd85263684a50040a0227bd0f9586706d0d07a46a264"
+    },
+    "docs/architecture/ARCH-026_CMRP_設計対話整理_2026-11-07.md": {
+      "before": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff",
+      "after": "9d260b36c012871fa7ced22d150e6acd95c9c9cd5261452f4f35dac24300caff"
+    },
+    "docs/architecture/ARCH-026_Migration_Function_Inventory_20261106.md": {
+      "before": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd",
+      "after": "162409193e5db85c505cd769c36061c14832fd8005e32a03f073b2d27869d1cd"
+    },
+    "docs/architecture/ARCH-026_Workflow_Function_Check_20261106.md": {
+      "before": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03",
+      "after": "a9e41572df9d7a6eeeaae65b37481e403834adf6a86218e4c12f7679aa814d03"
+    },
+    "docs/architecture/ARCH-026_設計判断履歴_CJobFormとCJobの未定義_2026-11-08.md": {
+      "before": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb",
+      "after": "40830a4d915e5c254936e160e93ca0a2cc63e1bd067cc1678f1ee11adca559eb"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz": {
+      "before": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4",
+      "after": "e7f97e55ed2da17adf32cb7358df39c816ed7e929ea4c7dee1b87d0aafda34c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.1.0-experiment.021.1.tgz.json": {
+      "before": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7",
+      "after": "a2b1b6e2d1e1076eedbd640b6eed985b9aee1f24f2f45c2f8d72832bb36a56a7"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz": {
+      "before": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b",
+      "after": "ffe9e41c96929b374af864b488e35a124d0be0d6c8460238555618b3e56a052b"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.1.tgz.json": {
+      "before": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372",
+      "after": "f23c5ae1b5d8a083584769ee396c1a562d06489799aa1545280606fd5f14d372"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz": {
+      "before": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2",
+      "after": "676c4f5eaa41667ed9f247866e5a5e8bffba451c2822a04ecf90093dd786dfc2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.2.tgz.json": {
+      "before": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526",
+      "after": "b04a96ed06b51b34984fb507c68bec0fc98a4711bab0ac5cd8073acfafbd8526"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz": {
+      "before": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a",
+      "after": "11aec62cdf405919888120c2c0ec812685fbac1dfba25536a9733130e367db7a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.3.tgz.json": {
+      "before": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a",
+      "after": "43b1883047f5e0fe8f85c64922787718df55a02f7a067c5a6613612daa9ef79a"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz": {
+      "before": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691",
+      "after": "0001f061d763dfcd219c677d635104e4278982ec02293d523b05c6be24a1b691"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.2.0-experiment.022.4.tgz.json": {
+      "before": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77",
+      "after": "3525b9dd140602a9ab6d98b56d5af90aedef9bb6f061519ed53492391bfb0a77"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz": {
+      "before": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6",
+      "after": "7b07579177be2f190117fa25b35566ea7da7934827dff1de14074b623c1dcfe6"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.1.tgz.json": {
+      "before": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539",
+      "after": "4ccd6744105390c74070df3443255eb9a7c25a19cd3d51fbd25b5fdf740ac539"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz": {
+      "before": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde",
+      "after": "faeabdb7f919616437032fec7c6ee83e806fbfd8a0c7b57fd07e6779327cdfde"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.10.tgz.json": {
+      "before": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5",
+      "after": "122bdd33d0d318cff32dd99b28e2d33099ee45943fbd688150d0a9fb24ee31e5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz": {
+      "before": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88",
+      "after": "885c697ba01a0aeb1575ec26310d976a5f439add93bc1c0ec4e464f98922eb88"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.2.tgz.json": {
+      "before": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99",
+      "after": "c4cff5da8e06be2785b6736ff304344d7fce5138c8f9392930d581a6b34d9e99"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz": {
+      "before": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86",
+      "after": "f2a71fd1ebe888dc0928db9ef7cc60dccc3d40d0c3c8ef7fe1bd1044af4b6d86"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.3.tgz.json": {
+      "before": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4",
+      "after": "5dd06490d32ac3e3c84b8fec3b153952cadc7a286f3ac3b0cdc8d3f37980add4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz": {
+      "before": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58",
+      "after": "0f32344c45ed86d7a5081b0a169956c097100665b158eba67021913d146d3e58"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.4.tgz.json": {
+      "before": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60",
+      "after": "3474c0c17d110b0dbea065c2efd4b8f2743bbd7babeca593861441a7eb7a1c60"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz": {
+      "before": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf",
+      "after": "0f991280852155698d67077dcfba8b7836ef54b9a14fee2e82c45bd6351319bf"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.5.tgz.json": {
+      "before": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907",
+      "after": "79326040843b8b079573f111ef587719ac5e210cd070b98baf8b78ca89b35907"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz": {
+      "before": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d",
+      "after": "2d60a55db8b8af7c0e730c0edc06d13f4eed67703e3d37f0e0e4f921d404753d"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.6.tgz.json": {
+      "before": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f",
+      "after": "7874f73808d67d1785df893cc20bd973d5c7ddde29d968dc3993a83b3565155f"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz": {
+      "before": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4",
+      "after": "11d3536affb2e347e65bb46fdd1d2febc90ae2f84124679c5ed30bb8fef500c4"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.7.tgz.json": {
+      "before": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932",
+      "after": "af56dd23f83f675ec2b249262fa247d2fd43d4934d39f63ac2c456866052b932"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz": {
+      "before": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955",
+      "after": "945fa2ad79923038023f64694c2da554930c89638beea49e0de5f9cbea98f955"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.8.tgz.json": {
+      "before": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5",
+      "after": "ade4a837261815fc8c4c59ac494f246910571ee3cd5aac449c2a95d282b103c5"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz": {
+      "before": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2",
+      "after": "812b181e117b9fbc805b952b1547dc0397aa190966402be203047230bbc8b0c2"
+    },
+    "runtime-data/workflow-unit/arch026-workflow-unit-0.3.0-framework.9.tgz.json": {
+      "before": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a",
+      "after": "7c260a9cc8dcb4b9b95bb994e10676302b9511c1310ae07488d0e7420f946a5a"
+    }
+  },
+  "residualRisks": [
+    "所有権検証成功直後やJob実行中にlease失効・所有権変更が発生し得る。",
+    "外部副作用とSQLite Checkpointは同一Transactionではなく、二重副作用対策は外部側の冪等性・fencing等が必要。",
+    "RUNNING/UNKNOWNは自動再実行せず人手確認が必要。",
+    "一時SQLiteとローカル試験の証拠であり、本番サービス/他OS/高負荷の結果を保証しない。"
+  ],
+  "nextActions": [
+    "利用者が本採点をレビューし、必要なら項目ごとの重み・成熟度基準を見直す。",
+    "次工程を別途指示された際に、Stage 2-2Cの検証直後競合・Job中失効・外部副作用後保存失敗の試験計画を作る。今回は着手しない。",
+    "RUNNING/UNKNOWNの手動判断手順、外部fencing/冪等性の境界、検証Transactionの負荷特性を次の検討事項とする。",
+    "Commit済み実装を再Commitしない。評価記録は未Stage・未Commitで利用者レビューへ渡す。"
+  ],
+  "operations": {
+    "newMigrationAsset": false,
+    "completeApproval": false,
+    "stage": false,
+    "commit": false,
+    "push": false,
+    "testExecution": false,
+    "stage22CStarted": false
+  }
+}
